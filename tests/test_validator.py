@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import pandas_market_calendars as mcal
 
 from trademind.ingestion.calendar import TradingCalendar
 from trademind.ingestion.corporate_actions import apply_corporate_actions
@@ -16,9 +17,15 @@ from trademind.ingestion.data_validator import DataValidator
 def frame(closes, splits=None, divs=None, volume=None, start="2023-01-02"):
     n = len(closes)
     closes = np.asarray(closes, dtype=float)
+
+    # Fetch valid NSE trading days starting from 2023-01-02
+    nse = mcal.get_calendar("NSE")
+    schedule = nse.schedule(start_date=start, end_date="2023-03-31")
+    trading_days = schedule.index[:n]
+
     return pd.DataFrame(
         {
-            "date": pd.bdate_range(start, periods=n),
+            "date": trading_days,
             "symbol": "TEST.NS",
             "open_split": closes,
             "high_split": closes * 1.01,
