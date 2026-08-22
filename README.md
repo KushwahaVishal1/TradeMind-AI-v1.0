@@ -123,15 +123,15 @@ free-tier data" is a stronger claim than silence.
 ## Testing
 
 ```bash
-### Windows PowerShell Commands
+# Windows PowerShell Commands
 
-# make protected (runs the 8 merge-blocking invariant tests)
-$env:PYTHONHASHSEED="42"; pytest -m protected -v
+# 1. Run protected invariants (8 merge-blocking tests)
+ $env:PYTHONHASHSEED="42"; pytest -m protected -v
 
-# make test (runs the full test suite — 499 tests)
-$env:PYTHONHASHSEED="42"; pytest -q
+# 2. Run full test suite (499 tests)
+ $env:PYTHONHASHSEED="42"; pytest -q
 
-# make ci (runs ruff linting + protected invariant tests + full test suite)
+# 3. Run complete local CI pipeline (ruff linting + protected tests + full suite)
 ruff check src tests dashboard; $env:PYTHONHASHSEED="42"; pytest -m protected; pytest -q
 ```
 

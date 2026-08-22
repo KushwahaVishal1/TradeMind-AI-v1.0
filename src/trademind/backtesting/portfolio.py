@@ -26,7 +26,7 @@ Driven by the cash balance, which is mutated by every fill, dividend, and fee.
 
     equity_B = initial_capital
              + realised_pnl          (closed trades, gross)
-             + unrealised_pnl        (Σ shares × (price - cost_basis))
+             + unrealised_pnl        (Σ shares * (price - cost_basis))
              + dividends_received
              - total_costs
 

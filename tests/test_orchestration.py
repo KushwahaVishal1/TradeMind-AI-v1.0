@@ -152,9 +152,10 @@ def test_every_lineage_field_is_persisted(tmp_path):
 
     pid = store.save(make_prediction(run_id=run_id, predicted_probability=0.58))
     row = store.get(pid)
+    row_dict = dict(row)
 
     for field in LINEAGE_FIELDS:
-        assert field in row, f"missing lineage field {field}"
+        assert field in row_dict, f"missing lineage field {field}"
     assert row["run_id"] == run_id
     assert row["training_end"] == "2023-06-14"
     conn.close()
