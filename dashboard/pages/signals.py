@@ -24,7 +24,7 @@ def render(state, cfg, store) -> None:
 
     counts = signal_counts(predictions)
     columns = st.columns(len(counts) or 1)
-    for col, (label, value) in zip(columns, counts.items()):
+    for col, (label, value) in zip(columns, counts.items(), strict=False):
         col.metric(label, value)
 
     if counts.get("REJECTED"):

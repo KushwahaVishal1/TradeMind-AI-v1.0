@@ -28,7 +28,7 @@ def render_panel(panel: Panel) -> None:
     available = [m for m in panel.metrics if m.available]
     if available:
         columns = st.columns(min(4, len(available)))
-        for col, metric in zip(columns * 10, available):
+        for col, metric in zip(columns * 10, available, strict=False):
             with col:
                 st.metric(metric.label, metric.format_value())
                 if metric.stderr is not None:

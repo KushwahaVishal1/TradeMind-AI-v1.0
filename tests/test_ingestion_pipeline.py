@@ -139,7 +139,7 @@ def test_error_severity_blocks_the_write(tmp_path):
 def test_warning_severity_does_not_block(tmp_path):
     # +25%: above the WARNING threshold (20%), below the ERROR threshold (50%).
     warn = bars([100.0, 101.0, 102.0, 128.0, 129.0, 130.0])
-    ing, lake, _, conn = pipeline({"TEST.NS": warn}, tmp_path=tmp_path)
+    ing, _lake, _, conn = pipeline({"TEST.NS": warn}, tmp_path=tmp_path)
 
     result = ing.ingest_symbol("TEST.NS", START, END)
 
@@ -160,7 +160,7 @@ def test_jump_exactly_at_threshold_does_not_warn():
 
 
 def test_provider_outage_is_contained(tmp_path):
-    ing, lake, _, conn = pipeline({}, fail={"TEST.NS"}, tmp_path=tmp_path)
+    ing, _lake, _, conn = pipeline({}, fail={"TEST.NS"}, tmp_path=tmp_path)
     result = ing.ingest_symbol("TEST.NS", START, END)
 
     assert not result.ok

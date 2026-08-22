@@ -44,7 +44,7 @@ import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
-from enum import Enum
+from enum import StrEnum
 
 log = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ log = logging.getLogger(__name__)
 STALE_RUN_HOURS = 6
 
 
-class JobStatus(str, Enum):
+class JobStatus(StrEnum):
     SUCCESS = "SUCCESS"
     FAILED = "FAILED"
     SKIPPED = "SKIPPED"

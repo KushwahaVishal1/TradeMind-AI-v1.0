@@ -61,8 +61,8 @@ def test_predicting_the_training_end_date_itself_is_refused():
 
 
 def test_predicting_after_training_is_allowed():
-    assert_temporally_valid(date(2023, 6, 16), date(2023, 6, 15), "m") is None
-
+    #assert_temporally_valid(date(2023, 6, 16), date(2023, 6, 15), "m") is None
+    assert assert_temporally_valid(date(2023, 6, 16), date(2023, 6, 15), "m") is None
 
 def test_missing_training_end_is_refused():
     """Without a training window, freedom from look-ahead cannot be shown."""
@@ -154,7 +154,7 @@ def test_every_lineage_field_is_persisted(tmp_path):
     row = store.get(pid)
 
     for field in LINEAGE_FIELDS:
-        assert field in row.keys(), f"missing lineage field {field}"
+        assert field in row, f"missing lineage field {field}"
     assert row["run_id"] == run_id
     assert row["training_end"] == "2023-06-14"
     conn.close()
@@ -428,7 +428,7 @@ def test_weekday_is_a_run_day():
 
 
 def test_approximate_calendar_is_disclosed():
-    ok, reason = should_run_today(date(2023, 6, 15))
+    _ok, reason = should_run_today(date(2023, 6, 15))
     from trademind.ingestion.calendar import TradingCalendar
 
     if TradingCalendar().is_approximate:

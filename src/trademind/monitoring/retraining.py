@@ -58,14 +58,14 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 
 log = logging.getLogger(__name__)
 
 MIN_NEW_OBSERVATIONS = 500
 
 
-class HealthState(str, Enum):
+class HealthState(StrEnum):
     HEALTHY = "HEALTHY"
     WARNING = "WARNING"
     DEGRADED = "DEGRADED"
@@ -77,7 +77,7 @@ class HealthState(str, Enum):
     BLOCKED = "BLOCKED"
 
 
-class Diagnosis(str, Enum):
+class Diagnosis(StrEnum):
     NONE = "NONE"
     LIKELY_REGIME_CHANGE = "LIKELY_REGIME_CHANGE"
     LIKELY_RELATIONSHIP_CHANGE = "LIKELY_RELATIONSHIP_CHANGE"
@@ -194,10 +194,10 @@ class RetrainingPolicy:
                 ),
                 diagnosis=Diagnosis.DRIFT_ONLY_MODEL_COPING,
                 reasons=tuple(
-                    reasons
-                    + [
+                    [
+                        *reasons,
                         "Drift without a performance problem does not justify "
-                        "retraining. The distribution moved; the model is coping."
+                        "retraining. The distribution moved; the model is coping.",
                     ]
                 ),
                 should_retrain=False,
@@ -230,7 +230,7 @@ class RetrainingPolicy:
             return PolicyDecision(
                 state=HealthState.DEGRADED,
                 diagnosis=diagnosis,
-                reasons=tuple(reasons + ["Waiting for more observations before retraining."]),
+                reasons=tuple([*reasons, "Waiting for more observations before retraining."]),
                 should_retrain=False,
             )
 

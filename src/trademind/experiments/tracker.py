@@ -207,7 +207,7 @@ class ExperimentTracker:
             return f"{len(runs)} experiments logged, none with a primary metric"
 
         best = max(values)
-        adjusted, explanation = adjusted_best(best, len(runs))
+        _adjusted, explanation = adjusted_best(best, len(runs))
         n_irreproducible = sum(1 for r in runs if not r.reproducible)
 
         lines = [

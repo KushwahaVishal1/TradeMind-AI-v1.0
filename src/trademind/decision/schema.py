@@ -25,10 +25,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date
-from enum import Enum
+from enum import StrEnum
 
 
-class Signal(str, Enum):
+class Signal(StrEnum):
     BUY = "BUY"
     HOLD = "HOLD"
     SELL = "SELL"
@@ -37,7 +37,7 @@ class Signal(str, Enum):
         return self.value
 
 
-class RejectReason(str, Enum):
+class RejectReason(StrEnum):
     """Why a decision fell back to preserving the current position."""
 
     NONE = "NONE"
@@ -49,7 +49,7 @@ class RejectReason(str, Enum):
     NO_EXECUTION_SESSION = "NO_EXECUTION_SESSION"
 
 
-class RiskBucket(str, Enum):
+class RiskBucket(StrEnum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"

@@ -19,14 +19,14 @@ Three responses, all applied here:
 **Effect size, not significance.** PSI measures *how much* a distribution moved;
 a p-value measures how confident we are that it moved at all. With thousands of
 observations, a p-value detects shifts far too small to matter. PSI is the
-primary signal; the conventional bands are < 0.10 stable, 0.10–0.25 moderate,
+primary signal; the conventional bands are < 0.10 stable, 0.10-0.25 moderate,
 > 0.25 significant.
 
 **Persistence.** A single day above threshold is noise. A feature must breach
 for ``persistence_days`` consecutive checks before it is reported as drifting.
 This costs a few days of detection latency and removes most of the false alarms.
 
-**FDR control on the p-values that remain.** Where KS is used, Benjamini–Hochberg
+**FDR control on the p-values that remain.** Where KS is used, Benjamini-Hochberg
 controls the false discovery rate across the whole feature set rather than
 per-feature. Bonferroni would be the alternative; it is far too conservative for
 45 correlated features and would detect nothing.

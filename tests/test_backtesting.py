@@ -391,7 +391,7 @@ def test_buy_and_hold_pays_costs_too():
     bars = {s: g.reset_index(drop=True) for s, g in panel.groupby("symbol")}
     sessions = sorted(pd.Timestamp(d).date() for d in panel["date"].unique())
 
-    for s, g in bars.items():
+    for _s, g in bars.items():
         g["date"] = pd.to_datetime(g["date"])
 
     charged = buy_and_hold(bars, sessions, CONFIG)

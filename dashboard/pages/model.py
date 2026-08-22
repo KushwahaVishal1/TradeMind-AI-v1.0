@@ -43,7 +43,7 @@ def render(state, cfg, store) -> None:
     st.subheader("Expected range")
     st.caption(
         "Honest, leak-free ROC-AUC on next-day NSE large-cap direction sits "
-        "around 0.51–0.54. Above 0.58 is treated as a leakage signal, not a "
+        "around 0.51-0.54. Above 0.58 is treated as a leakage signal, not a "
         "result — the leakage suite gets pointed at it before anything is "
         "celebrated."
     )

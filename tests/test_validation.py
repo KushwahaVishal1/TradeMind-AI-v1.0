@@ -8,6 +8,7 @@ leak these modules exist to close, demonstrated rather than asserted.
 
 from __future__ import annotations
 
+import itertools
 from datetime import date
 
 import numpy as np
@@ -232,7 +233,7 @@ def test_folds_move_forward_in_time():
         )
     )
 
-    for a, b in zip(folds, folds[1:]):
+    for a, b in itertools.pairwise(folds):
         assert b.val_start > a.val_start
         assert b.train_end >= a.train_end
 

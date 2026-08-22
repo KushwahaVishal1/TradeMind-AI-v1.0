@@ -127,7 +127,7 @@ def build_meta_features(
 
 
 def meta_feature_columns(frame: pd.DataFrame, label_col: str = "y_true") -> list[str]:
-    return [c for c in frame.columns if c not in KEYS + [label_col, "fold", "block"]]
+    return [c for c in frame.columns if c not in [*KEYS, label_col, "fold", "block"]]
 
 
 @dataclass
@@ -226,7 +226,7 @@ def fit_stack(
         metrics = classification_metrics(val[label_col], preds)
         rows.append({**fold.describe(), **metrics})
 
-        coefs.append(dict(zip(cols, pipe.named_steps["model"].coef_.ravel())))
+        coefs.append(dict(zip(cols, pipe.named_steps["model"].coef_.ravel(), strict=False)))
         frames.append(
             pd.DataFrame(
                 {

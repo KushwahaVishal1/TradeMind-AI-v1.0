@@ -242,7 +242,7 @@ def test_degradation_below_the_mde_is_not_declared():
 def test_large_degradation_is_declared():
     resolved = resolved_frame(n_days=200, auc_signal=0.0, seed=9)
     windows = rolling_windows(resolved, windows=(90,))
-    detected, reason = degradation_detected(windows[0], baseline_auc=0.95)
+    detected, _reason = degradation_detected(windows[0], baseline_auc=0.95)
     assert detected
 
 

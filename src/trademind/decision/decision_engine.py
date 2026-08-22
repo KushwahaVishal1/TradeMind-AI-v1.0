@@ -76,9 +76,8 @@ class DecisionEngine:
             if decision.signal is Signal.BUY and not decision.rejected:
                 if inp.current_position.is_flat:
                     open_count += 1
-            elif decision.signal is Signal.SELL and not decision.rejected:
-                if inp.current_position.is_long:
-                    open_count -= 1
+            elif decision.signal is Signal.SELL and not decision.rejected and inp.current_position.is_long:
+                open_count -= 1
             out.append(decision)
         return out
 

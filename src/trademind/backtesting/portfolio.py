@@ -18,7 +18,7 @@ This module computes equity twice, from disjoint state, and requires agreement.
 
 **Path A — balance sheet.** What is actually held::
 
-    equity_A = cash + Σ (shares × current_price)
+    equity_A = cash + Σ (shares * current_price)
 
 Driven by the cash balance, which is mutated by every fill, dividend, and fee.
 
@@ -26,9 +26,9 @@ Driven by the cash balance, which is mutated by every fill, dividend, and fee.
 
     equity_B = initial_capital
              + realised_pnl          (closed trades, gross)
-             + unrealised_pnl        (Σ shares × (price − cost_basis))
+             + unrealised_pnl        (Σ shares × (price - cost_basis))
              + dividends_received
-             − total_costs
+             - total_costs
 
 Driven by separate accumulators that never read ``cash``.
 
@@ -44,7 +44,7 @@ rather than as an unexplained return six months later.
 ## The corporate-action invariant
 
 Splits go through ``adjust_position_for_split`` from Phase 1 — the same
-function whose test asserts 100 × ₹1,000 = 200 × ₹500. Share count multiplies,
+function whose test asserts 100 * ₹1,000 = 200 * ₹500. Share count multiplies,
 cost basis divides, wealth is unchanged. Reconciliation then confirms it,
 because a split that moved equity would break path A against path B.
 """

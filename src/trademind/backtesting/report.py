@@ -33,7 +33,7 @@ def max_drawdown(equity: pd.Series) -> tuple[float, int]:
         return 0.0, 0
     peak = equity.cummax()
     dd = equity / peak - 1.0
-    trough = int(dd.idxmin()) if len(dd) else 0
+    int(dd.idxmin()) if len(dd) else 0
     depth = float(dd.min())
 
     in_dd = dd < 0

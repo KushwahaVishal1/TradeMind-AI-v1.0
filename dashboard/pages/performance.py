@@ -43,7 +43,7 @@ def render(state, cfg, store) -> None:
             if component in trades.columns
         }
         columns = st.columns(len(totals) or 1)
-        for col, (name, value) in zip(columns, totals.items()):
+        for col, (name, value) in zip(columns, totals.items(), strict=False):
             col.metric(name.title(), f"{value:,.0f}")
 
         st.subheader("Trades")
