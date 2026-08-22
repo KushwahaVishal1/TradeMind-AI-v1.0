@@ -59,14 +59,16 @@ class TradingCalendar:
             except Exception as exc:  # pragma: no cover
                 log.warning(
                     "XNSE calendar unavailable (%s); falling back to weekday "
-                    "approximation. Missing-session findings will be noisy.", exc
+                    "approximation. Missing-session findings will be noisy.",
+                    exc,
                 )
                 self.backend = "weekday"
         else:
             log.warning(
                 "pandas_market_calendars not installed; using weekday "
                 "approximation for %s. Install it for accurate holiday "
-                "handling: pip install pandas-market-calendars", exchange
+                "handling: pip install pandas-market-calendars",
+                exchange,
             )
 
     @property
@@ -104,16 +106,12 @@ class TradingCalendar:
         found = self.sessions(day + timedelta(days=1), day + timedelta(days=lookahead))
         return found[0] if found else None
 
-    def missing_sessions(
-        self, observed: pd.Series, start: date, end: date
-    ) -> list[date]:
+    def missing_sessions(self, observed: pd.Series, start: date, end: date) -> list[date]:
         """Expected sessions with no corresponding bar."""
         have = {pd.Timestamp(d).date() for d in observed}
         return [d for d in self.sessions(start, end) if d not in have]
 
-    def unexpected_sessions(
-        self, observed: pd.Series, start: date, end: date
-    ) -> list[date]:
+    def unexpected_sessions(self, observed: pd.Series, start: date, end: date) -> list[date]:
         """Bars on days the calendar says the exchange was closed.
 
         Under the exchange backend these are worth investigating — usually a

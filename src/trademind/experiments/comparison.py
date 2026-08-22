@@ -30,9 +30,7 @@ def is_distinguishable(
     return abs(a - b) > z * stderr * np.sqrt(2)
 
 
-def compare_experiments(
-    runs, stderr: float = DEFAULT_METRIC_STDERR
-) -> pd.DataFrame:
+def compare_experiments(runs, stderr: float = DEFAULT_METRIC_STDERR) -> pd.DataFrame:
     """Rank experiments and mark which are actually distinguishable from the best."""
     rows = []
     values = [r.primary_value for r in runs if r.primary_value is not None]
@@ -44,21 +42,25 @@ def compare_experiments(
 
     for r in runs:
         value = r.primary_value
-        rows.append({
-            "name": r.name,
-            "model_type": r.model_type,
-            "observed": value,
-            "gap_to_best": None if value is None else best - value,
-            "distinguishable_from_best": (
-                False if value is None else is_distinguishable(value, best, stderr)
-            ),
-            "selection_adjusted": None if value is None else value - inflation,
-            "reproducible": r.reproducible,
-        })
+        rows.append(
+            {
+                "name": r.name,
+                "model_type": r.model_type,
+                "observed": value,
+                "gap_to_best": None if value is None else best - value,
+                "distinguishable_from_best": (
+                    False if value is None else is_distinguishable(value, best, stderr)
+                ),
+                "selection_adjusted": None if value is None else value - inflation,
+                "reproducible": r.reproducible,
+            }
+        )
 
-    return pd.DataFrame(rows).sort_values(
-        "observed", ascending=False, na_position="last"
-    ).reset_index(drop=True)
+    return (
+        pd.DataFrame(rows)
+        .sort_values("observed", ascending=False, na_position="last")
+        .reset_index(drop=True)
+    )
 
 
 def render_comparison(frame: pd.DataFrame, stderr: float = DEFAULT_METRIC_STDERR) -> str:

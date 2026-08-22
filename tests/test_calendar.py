@@ -20,9 +20,9 @@ def cal():
 
 def test_weekends_are_not_sessions():
     c = cal()
-    assert not c.is_session(date(2023, 6, 17))   # Saturday
-    assert not c.is_session(date(2023, 6, 18))   # Sunday
-    assert c.is_session(date(2023, 6, 16))       # Friday
+    assert not c.is_session(date(2023, 6, 17))  # Saturday
+    assert not c.is_session(date(2023, 6, 18))  # Sunday
+    assert c.is_session(date(2023, 6, 16))  # Friday
 
 
 def test_sessions_are_ascending_and_bounded():
@@ -45,8 +45,8 @@ def test_next_session_is_strictly_later():
 
 
 def test_next_session_skips_the_weekend():
-    nxt = cal().next_session(date(2023, 6, 16))   # Friday
-    assert nxt == date(2023, 6, 19)               # Monday
+    nxt = cal().next_session(date(2023, 6, 16))  # Friday
+    assert nxt == date(2023, 6, 19)  # Monday
 
 
 def test_next_session_gives_up_rather_than_guessing():

@@ -8,10 +8,9 @@ curve invites the viewer to stop reading.
 from __future__ import annotations
 
 import streamlit as st
+from components.render import render_panel
 
 from trademind.reporting import build_overview
-
-from components.render import render_panel
 
 
 def render(state, cfg, store) -> None:

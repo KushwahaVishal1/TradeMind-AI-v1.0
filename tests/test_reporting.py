@@ -10,7 +10,6 @@ the equity curve.
 from __future__ import annotations
 
 import pandas as pd
-import pytest
 
 from trademind.reporting import (
     Metric,
@@ -28,15 +27,16 @@ from trademind.reporting import (
     signal_counts,
 )
 
-
 # =====================================================================
 # Ordering — the honest findings come first
 # =====================================================================
 
+
 def test_overview_leads_with_cost_feasibility():
     """A dashboard that opens with a rising curve invites you to stop reading."""
-    panels = build_overview({"round_trip_cost": 0.0026, "breakeven_ic": 0.099,
-                             "observed_ic": 0.027})
+    panels = build_overview(
+        {"round_trip_cost": 0.0026, "breakeven_ic": 0.099, "observed_ic": 0.027}
+    )
     assert panels[0].title == "Cost feasibility"
 
 
@@ -60,6 +60,7 @@ def test_overview_survives_an_empty_state():
 # =====================================================================
 # Cost feasibility
 # =====================================================================
+
 
 def test_infeasible_strategy_renders_as_bad():
     panel = build_cost_feasibility_panel(0.0026, 0.099, 0.027, holding_days=1)
@@ -90,32 +91,35 @@ def test_uncomputed_feasibility_points_at_the_command():
 # Model skill
 # =====================================================================
 
+
 def test_auc_within_noise_of_chance_is_not_skill():
     """0.515 ± 0.024 is not a result."""
-    panel = build_skill_panel(auc=0.515, auc_stderr=0.024,
-                              majority_accuracy=0.524, accuracy=0.517)
+    panel = build_skill_panel(
+        auc=0.515, auc_stderr=0.024, majority_accuracy=0.524, accuracy=0.517
+    )
     assert panel.verdict is Verdict.CONCERN
     assert "within sampling error of chance" in panel.headline
 
 
 def test_negative_lift_renders_as_bad():
     """Worse than a constant predictor must not read as a mild result."""
-    panel = build_skill_panel(auc=0.60, auc_stderr=0.01,
-                              majority_accuracy=0.524, accuracy=0.510)
+    panel = build_skill_panel(
+        auc=0.60, auc_stderr=0.01, majority_accuracy=0.524, accuracy=0.510
+    )
     assert panel.verdict is Verdict.BAD
     assert "below" in panel.headline
 
 
 def test_implausibly_high_auc_is_flagged_as_leakage():
-    panel = build_skill_panel(auc=0.72, auc_stderr=0.01,
-                              majority_accuracy=0.52, accuracy=0.68)
+    panel = build_skill_panel(auc=0.72, auc_stderr=0.01, majority_accuracy=0.52, accuracy=0.68)
     assert panel.verdict is Verdict.CONCERN
     assert "leakage" in panel.headline.lower()
 
 
 def test_genuine_skill_renders_as_good():
-    panel = build_skill_panel(auc=0.56, auc_stderr=0.010,
-                              majority_accuracy=0.52, accuracy=0.55)
+    panel = build_skill_panel(
+        auc=0.56, auc_stderr=0.010, majority_accuracy=0.52, accuracy=0.55
+    )
     assert panel.verdict is Verdict.GOOD
 
 
@@ -127,6 +131,7 @@ def test_skill_panel_always_states_the_baseline_caveat():
 # =====================================================================
 # Accounting and data quality
 # =====================================================================
+
 
 def test_clean_reconciliation_is_good():
     assert build_accounting_panel(0.0).verdict is Verdict.GOOD
@@ -158,10 +163,17 @@ def test_clean_ingestion_is_good():
 # Performance
 # =====================================================================
 
+
 def test_underperforming_the_benchmark_renders_as_bad():
     panel = build_performance_panel(
-        {"total_return": 0.165, "sharpe": 0.99, "sharpe_stderr": 0.58,
-         "cost_drag": 0.079, "n_sessions": 750, "annual_turnover": 20.4},
+        {
+            "total_return": 0.165,
+            "sharpe": 0.99,
+            "sharpe_stderr": 0.58,
+            "cost_drag": 0.079,
+            "n_sessions": 750,
+            "annual_turnover": 20.4,
+        },
         benchmark={"total_return": 0.474},
     )
     assert panel.verdict is Verdict.BAD
@@ -196,19 +208,24 @@ def test_long_sample_needs_no_caveat():
 # Drift and detectability
 # =====================================================================
 
+
 def test_drift_panel_shows_the_naive_count_beside_the_controlled_one():
-    panel = build_drift_panel({
-        "n_significant": 0, "n_moderate": 3, "max_psi": 0.12,
-        "n_ks_naive": 11, "n_ks_fdr": 1,
-    })
+    panel = build_drift_panel(
+        {
+            "n_significant": 0,
+            "n_moderate": 3,
+            "max_psi": 0.12,
+            "n_ks_naive": 11,
+            "n_ks_fdr": 1,
+        }
+    )
     labels = [m.label for m in panel.metrics]
     assert any("naive" in label for label in labels)
     assert any("FDR" in label for label in labels)
 
 
 def test_drift_panel_states_that_drift_alone_does_not_retrain():
-    panel = build_drift_panel({"n_significant": 5, "n_ks_naive": 20,
-                               "n_ks_fdr": 3})
+    panel = build_drift_panel({"n_significant": 5, "n_ks_naive": 20, "n_ks_fdr": 3})
     assert any("never triggers retraining" in c for c in panel.caveats)
 
 
@@ -221,10 +238,13 @@ class FakeWindow:
 
 
 def test_detectability_panel_states_the_blindness():
-    panel = build_detectability_panel([
-        FakeWindow(7, 105, 0.39), FakeWindow(30, 450, 0.19),
-        FakeWindow(90, 1350, 0.11),
-    ])
+    panel = build_detectability_panel(
+        [
+            FakeWindow(7, 105, 0.39),
+            FakeWindow(30, 450, 0.19),
+            FakeWindow(90, 1350, 0.11),
+        ]
+    )
     assert panel.verdict is Verdict.CONCERN
     assert any("entire edge is about 0.02" in c for c in panel.caveats)
     assert any("not evidence of health" in c for c in panel.caveats)
@@ -240,14 +260,18 @@ def test_detectability_handles_thin_windows():
 # Signals
 # =====================================================================
 
+
 def test_signals_table_keeps_rejections():
     """A BELOW_COST_FLOOR rejection is the system working; hiding it hides that."""
-    decisions = pd.DataFrame({
-        "symbol": ["A", "B"], "signal": ["BUY", "HOLD"],
-        "calibrated_probability": [0.61, 0.72],
-        "rejected": [False, True],
-        "reject_reason": ["NONE", "BELOW_COST_FLOOR"],
-    })
+    decisions = pd.DataFrame(
+        {
+            "symbol": ["A", "B"],
+            "signal": ["BUY", "HOLD"],
+            "calibrated_probability": [0.61, 0.72],
+            "rejected": [False, True],
+            "reject_reason": ["NONE", "BELOW_COST_FLOOR"],
+        }
+    )
     table = build_signals_table(decisions)
 
     assert len(table) == 2
@@ -255,18 +279,23 @@ def test_signals_table_keeps_rejections():
 
 
 def test_signals_table_sorts_by_probability():
-    decisions = pd.DataFrame({
-        "symbol": ["A", "B", "C"], "signal": ["HOLD"] * 3,
-        "calibrated_probability": [0.40, 0.80, 0.60],
-    })
+    decisions = pd.DataFrame(
+        {
+            "symbol": ["A", "B", "C"],
+            "signal": ["HOLD"] * 3,
+            "calibrated_probability": [0.40, 0.80, 0.60],
+        }
+    )
     assert build_signals_table(decisions)["symbol"].to_list() == ["B", "C", "A"]
 
 
 def test_signal_counts_include_rejections():
-    decisions = pd.DataFrame({
-        "signal": ["BUY", "BUY", "HOLD", "SELL"],
-        "rejected": [False, True, True, False],
-    })
+    decisions = pd.DataFrame(
+        {
+            "signal": ["BUY", "BUY", "HOLD", "SELL"],
+            "rejected": [False, True, True, False],
+        }
+    )
     counts = signal_counts(decisions)
     assert counts["BUY"] == 2
     assert counts["REJECTED"] == 2
@@ -280,6 +309,7 @@ def test_empty_decisions_render_empty():
 # =====================================================================
 # Metric formatting
 # =====================================================================
+
 
 def test_metric_carries_its_stderr():
     m = Metric("AUC", 0.5157, stderr=0.0137)

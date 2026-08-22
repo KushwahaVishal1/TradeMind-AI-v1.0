@@ -18,7 +18,7 @@ import logging
 import platform
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import joblib
@@ -89,7 +89,7 @@ class ModelRegistry:
 
         metadata = {
             **model.metadata(),
-            "saved_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "saved_at": datetime.now(UTC).isoformat(timespec="seconds"),
             "environment": _environment(),
             "feature_names": model.feature_names_,
             **(extra or {}),
@@ -140,12 +140,16 @@ class ModelRegistry:
                 log.warning(
                     "%s was saved under %s %s but is loading under %s. "
                     "Behaviour may differ silently.",
-                    version, key, saved[key], current[key],
+                    version,
+                    key,
+                    saved[key],
+                    current[key],
                 )
 
     def list_versions(self) -> list[str]:
         return sorted(
-            p.name for p in self.root.iterdir()
+            p.name
+            for p in self.root.iterdir()
             if p.is_dir() and (p / "metadata.json").exists()
         )
 
@@ -155,14 +159,16 @@ class ModelRegistry:
             meta = json.loads(
                 (self.path_for(version) / "metadata.json").read_text(encoding="utf-8")
             )
-            rows.append({
-                "version": version,
-                "task": meta.get("task"),
-                "estimator": meta.get("estimator"),
-                "n_features": meta.get("n_features"),
-                "training_end": meta.get("training_end"),
-                "saved_at": meta.get("saved_at"),
-            })
+            rows.append(
+                {
+                    "version": version,
+                    "task": meta.get("task"),
+                    "estimator": meta.get("estimator"),
+                    "n_features": meta.get("n_features"),
+                    "training_end": meta.get("training_end"),
+                    "saved_at": meta.get("saved_at"),
+                }
+            )
         return pd.DataFrame(rows)
 
 

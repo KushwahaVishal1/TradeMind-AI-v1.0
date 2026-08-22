@@ -90,11 +90,13 @@ class Calibrator:
             if len(p) < ISOTONIC_MIN_SAMPLES:
                 log.warning(
                     "Isotonic calibration on %d samples (< %d) will overfit; "
-                    "sigmoid is safer at this size.", len(p), ISOTONIC_MIN_SAMPLES,
+                    "sigmoid is safer at this size.",
+                    len(p),
+                    ISOTONIC_MIN_SAMPLES,
                 )
-            self._model = IsotonicRegression(
-                y_min=0.0, y_max=1.0, out_of_bounds="clip"
-            ).fit(p, y)
+            self._model = IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip").fit(
+                p, y
+            )
 
         elif method == "sigmoid":
             from sklearn.linear_model import LogisticRegression
@@ -122,17 +124,19 @@ class Calibrator:
 class CalibrationResult:
     """Out-of-fold calibrated predictions, with the before/after comparison."""
 
-    predictions: pd.DataFrame          # date, symbol, y_true, raw, calibrated
+    predictions: pd.DataFrame  # date, symbol, y_true, raw, calibrated
     method: str
     n_folds: int
 
     def comparison(self, n_bins: int = 10) -> pd.DataFrame:
         from .ensemble_metrics import calibration_metrics
 
-        before = calibration_metrics(self.predictions["y_true"],
-                                     self.predictions["raw"], n_bins)
-        after = calibration_metrics(self.predictions["y_true"],
-                                    self.predictions["calibrated"], n_bins)
+        before = calibration_metrics(
+            self.predictions["y_true"], self.predictions["raw"], n_bins
+        )
+        after = calibration_metrics(
+            self.predictions["y_true"], self.predictions["calibrated"], n_bins
+        )
         return pd.DataFrame({"raw": before, "calibrated": after}).T
 
     def render(self) -> str:
@@ -182,7 +186,7 @@ def calibrate_out_of_fold(
     frames, resolved = [], method
     for k, block in enumerate(edges):
         if k == 0 or len(block) == 0:
-            continue    # nothing earlier to fit on
+            continue  # nothing earlier to fit on
 
         block_dates = set(dates[block])
         is_block = data["date"].isin(block_dates)
@@ -197,19 +201,22 @@ def calibrate_out_of_fold(
         resolved = cal.resolved_method_
 
         target = data[is_block].copy()
-        frames.append(pd.DataFrame({
-            "date": target["date"].to_numpy(),
-            "symbol": target.get("symbol", pd.Series([None] * len(target))).to_numpy(),
-            "block": k,
-            "y_true": target[label_col].to_numpy(),
-            "raw": target[prob_col].to_numpy(),
-            "calibrated": cal.predict(target[prob_col]),
-        }))
+        frames.append(
+            pd.DataFrame(
+                {
+                    "date": target["date"].to_numpy(),
+                    "symbol": target.get("symbol", pd.Series([None] * len(target))).to_numpy(),
+                    "block": k,
+                    "y_true": target[label_col].to_numpy(),
+                    "raw": target[prob_col].to_numpy(),
+                    "calibrated": cal.predict(target[prob_col]),
+                }
+            )
+        )
 
     if not frames:
         raise ValueError(
-            "No block had enough prior data to calibrate on. Reduce n_blocks "
-            "or min_fit_rows."
+            "No block had enough prior data to calibrate on. Reduce n_blocks or min_fit_rows."
         )
 
     return CalibrationResult(

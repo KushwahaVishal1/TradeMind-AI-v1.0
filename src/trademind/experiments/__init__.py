@@ -10,10 +10,17 @@ from .tracker import (
 )
 
 __all__ = [
-    "ExperimentRun", "package_versions",
-    "ExperimentTracker", "selection_inflation", "adjusted_best",
     "DEFAULT_METRIC_STDERR",
-    "ModelLifecycle", "Stage", "IllegalTransition",
     "ArtifactStore",
-    "compare_experiments", "is_distinguishable", "render_comparison",
+    "ExperimentRun",
+    "ExperimentTracker",
+    "IllegalTransition",
+    "ModelLifecycle",
+    "Stage",
+    "adjusted_best",
+    "compare_experiments",
+    "is_distinguishable",
+    "package_versions",
+    "render_comparison",
+    "selection_inflation",
 ]

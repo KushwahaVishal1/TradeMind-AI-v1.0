@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import streamlit as st
+from components.render import empty_state, render_panel
 
 from trademind.reporting import build_detectability_panel, build_drift_panel
-
-from components.render import empty_state, render_panel
 
 
 def render(state, cfg, store) -> None:
@@ -21,8 +20,7 @@ def render(state, cfg, store) -> None:
         render_panel(build_detectability_panel(rolling_windows(resolved)))
     else:
         empty_state(
-            "No resolved predictions yet, so monitoring sensitivity cannot be "
-            "assessed.",
+            "No resolved predictions yet, so monitoring sensitivity cannot be assessed.",
             "python main.py daily",
         )
 
@@ -30,8 +28,16 @@ def render(state, cfg, store) -> None:
     if drift is not None and not drift.empty:
         st.subheader("Per-feature")
         st.dataframe(
-            drift[["feature", "psi", "severity", "ks_pvalue",
-                   "ks_significant_fdr", "missing_rate_current"]],
+            drift[
+                [
+                    "feature",
+                    "psi",
+                    "severity",
+                    "ks_pvalue",
+                    "ks_significant_fdr",
+                    "missing_rate_current",
+                ]
+            ],
             use_container_width=True,
         )
         st.caption(

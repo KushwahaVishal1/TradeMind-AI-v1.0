@@ -101,7 +101,8 @@ def performance_metrics(
         "total_return": total_return,
         "cagr": (end / start) ** (1 / years) - 1.0 if years > 0 and start > 0 else 0.0,
         "annual_volatility": float(returns.std(ddof=1) * np.sqrt(TRADING_DAYS))
-        if len(returns) > 1 else 0.0,
+        if len(returns) > 1
+        else 0.0,
         "sharpe": sharpe,
         "sharpe_stderr": sharpe_stderr(n),
         "sortino": sortino_ratio(returns),
@@ -109,7 +110,8 @@ def performance_metrics(
         "max_drawdown_sessions": float(dd_len),
         "win_rate": float((returns > 0).mean()) if len(returns) else 0.0,
         "mean_exposure": float(equity_curve["exposure"].mean())
-        if "exposure" in equity_curve else 0.0,
+        if "exposure" in equity_curve
+        else 0.0,
     }
 
     if "total_costs" in equity_curve.columns:
@@ -150,8 +152,17 @@ def compare_to_benchmarks(
     for name, metrics in benchmarks.items():
         rows.append({"name": name, **metrics})
 
-    cols = ["name", "total_return", "cagr", "sharpe", "sharpe_stderr",
-            "max_drawdown", "annual_volatility", "cost_drag", "annual_turnover"]
+    cols = [
+        "name",
+        "total_return",
+        "cagr",
+        "sharpe",
+        "sharpe_stderr",
+        "max_drawdown",
+        "annual_volatility",
+        "cost_drag",
+        "annual_turnover",
+    ]
     frame = pd.DataFrame(rows)
     return frame[[c for c in cols if c in frame.columns]]
 
@@ -165,13 +176,11 @@ def render_report(
         return "no results"
 
     lines = [
-        f"period          {metrics['n_sessions']:.0f} sessions "
-        f"({metrics['years']:.2f} years)",
+        f"period          {metrics['n_sessions']:.0f} sessions ({metrics['years']:.2f} years)",
         f"total return    {metrics['total_return']:+.2%}",
         f"CAGR            {metrics['cagr']:+.2%}",
         f"volatility      {metrics['annual_volatility']:.2%}",
-        f"Sharpe          {metrics['sharpe']:+.2f} "
-        f"+/- {metrics['sharpe_stderr']:.2f}",
+        f"Sharpe          {metrics['sharpe']:+.2f} +/- {metrics['sharpe_stderr']:.2f}",
         f"Sortino         {metrics['sortino']:+.2f}",
         f"max drawdown    {metrics['max_drawdown']:.2%} "
         f"({metrics['max_drawdown_sessions']:.0f} sessions)",
@@ -210,8 +219,6 @@ def render_report(
 
     if benchmarks:
         lines += ["", "vs benchmarks (identical window, identical costs):"]
-        lines.append(
-            compare_to_benchmarks(metrics, benchmarks).to_string(index=False)
-        )
+        lines.append(compare_to_benchmarks(metrics, benchmarks).to_string(index=False))
 
     return "\n".join(lines)

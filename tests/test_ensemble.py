@@ -47,15 +47,23 @@ def oof_frame(n_days=1200, symbols=("A", "B", "C"), skill=0.0, bias=0.0, seed=0)
         y = (latent * skill + rng.normal(size=n_days) > 0).astype(float)
         # Overconfident probabilities: pushed toward the extremes, plus a bias.
         raw = 1 / (1 + np.exp(-(latent * skill * 2.5 + bias)))
-        rows.append(pd.DataFrame({
-            "date": dates, "symbol": s, "y_true": y, "y_pred": np.clip(raw, 1e-4, 1 - 1e-4),
-        }))
+        rows.append(
+            pd.DataFrame(
+                {
+                    "date": dates,
+                    "symbol": s,
+                    "y_true": y,
+                    "y_pred": np.clip(raw, 1e-4, 1 - 1e-4),
+                }
+            )
+        )
     return pd.concat(rows).sort_values(["date", "symbol"]).reset_index(drop=True)
 
 
 def splitter(n_splits=3):
     return PurgedWalkForwardSplit(
-        n_splits=n_splits, test_sessions=120,
+        n_splits=n_splits,
+        test_sessions=120,
         gaps=GapConfig(horizon=1, purge=2, embargo=3),
         min_train_sessions=252,
     )
@@ -64,6 +72,7 @@ def splitter(n_splits=3):
 # =====================================================================
 # THE circularity demonstration
 # =====================================================================
+
 
 def test_in_sample_calibration_is_circular():
     """Fitting and measuring on the same rows produces a meaningless ECE.
@@ -76,9 +85,7 @@ def test_in_sample_calibration_is_circular():
 
     # The wrong way: fit and measure on identical rows.
     circular = Calibrator("isotonic").fit(df["y_pred"], df["y_true"])
-    ece_circular = expected_calibration_error(
-        df["y_true"], circular.predict(df["y_pred"])
-    )
+    ece_circular = expected_calibration_error(df["y_true"], circular.predict(df["y_pred"]))
 
     # The honest way: fitted on earlier blocks, measured on later ones.
     honest = calibrate_out_of_fold(df, method="isotonic", n_blocks=4)
@@ -124,16 +131,21 @@ def test_calibration_reduces_a_systematic_bias():
     df = oof_frame(n_days=1600, skill=0.5, bias=1.5)
     result = calibrate_out_of_fold(df, method="sigmoid", n_blocks=4)
 
-    before = abs(calibration_metrics(result.predictions["y_true"],
-                                     result.predictions["raw"])["bias"])
-    after = abs(calibration_metrics(result.predictions["y_true"],
-                                    result.predictions["calibrated"])["bias"])
+    before = abs(
+        calibration_metrics(result.predictions["y_true"], result.predictions["raw"])["bias"]
+    )
+    after = abs(
+        calibration_metrics(result.predictions["y_true"], result.predictions["calibrated"])[
+            "bias"
+        ]
+    )
     assert after < before
 
 
 # =====================================================================
 # Calibrator mechanics
 # =====================================================================
+
 
 def test_auto_picks_sigmoid_on_small_samples():
     c = Calibrator("auto").fit(RNG.random(200), RNG.integers(0, 2, 200))
@@ -180,6 +192,7 @@ def test_production_calibrator_uses_every_row():
 # Calibration metrics
 # =====================================================================
 
+
 def test_perfect_calibration_scores_zero_ece():
     rng = np.random.default_rng(3)
     p = rng.uniform(0.05, 0.95, 40000)
@@ -190,7 +203,7 @@ def test_perfect_calibration_scores_zero_ece():
 def test_systematically_overconfident_model_scores_high_ece():
     rng = np.random.default_rng(4)
     p = rng.uniform(0.05, 0.95, 5000)
-    y = (rng.random(5000) < 0.5).astype(int)     # outcomes ignore the forecast
+    y = (rng.random(5000) < 0.5).astype(int)  # outcomes ignore the forecast
     assert expected_calibration_error(y, p) > 0.15
 
 
@@ -233,10 +246,12 @@ def test_brier_decomposition_reconstructs_the_score():
 
 def test_resolution_is_higher_for_a_model_with_signal():
     """Resolution is the part calibration cannot manufacture."""
-    weak = decompose_brier(*[oof_frame(n_days=1200, skill=0.05)[c]
-                             for c in ("y_true", "y_pred")])
-    strong = decompose_brier(*[oof_frame(n_days=1200, skill=1.0)[c]
-                               for c in ("y_true", "y_pred")])
+    weak = decompose_brier(
+        *[oof_frame(n_days=1200, skill=0.05)[c] for c in ("y_true", "y_pred")]
+    )
+    strong = decompose_brier(
+        *[oof_frame(n_days=1200, skill=1.0)[c] for c in ("y_true", "y_pred")]
+    )
     assert strong["resolution"] > weak["resolution"]
 
 
@@ -247,6 +262,7 @@ def test_sharpness_of_an_empty_series_is_nan():
 # =====================================================================
 # Stacking alignment
 # =====================================================================
+
 
 def test_meta_features_join_on_date_and_symbol():
     a = oof_frame(n_days=400, seed=1)
@@ -267,8 +283,7 @@ def test_misaligned_frames_do_not_silently_mispair():
     from_ordered = build_meta_features({"m1": a, "m2": b})
     from_shuffled = build_meta_features({"m1": a, "m2": b_shuffled})
 
-    merged = from_ordered.merge(from_shuffled, on=["date", "symbol"],
-                                suffixes=("_o", "_s"))
+    merged = from_ordered.merge(from_shuffled, on=["date", "symbol"], suffixes=("_o", "_s"))
     assert np.allclose(merged["pred_m2_o"], merged["pred_m2_s"])
 
 
@@ -312,11 +327,14 @@ def test_context_features_can_be_attached():
 # Stacking behaviour
 # =====================================================================
 
+
 def test_stack_runs_out_of_fold():
-    meta = build_meta_features({
-        "m1": oof_frame(n_days=1200, skill=0.3, seed=1),
-        "m2": oof_frame(n_days=1200, skill=0.2, seed=2),
-    })
+    meta = build_meta_features(
+        {
+            "m1": oof_frame(n_days=1200, skill=0.3, seed=1),
+            "m2": oof_frame(n_days=1200, skill=0.2, seed=2),
+        }
+    )
     result = fit_stack(meta, splitter=splitter())
 
     assert len(result.fold_metrics) == 3
@@ -325,10 +343,12 @@ def test_stack_runs_out_of_fold():
 
 def test_stack_coefficients_are_reported_with_spread():
     """Unstable coefficients across folds mean the weights are not learnable."""
-    meta = build_meta_features({
-        "m1": oof_frame(n_days=1200, skill=0.4, seed=1),
-        "m2": oof_frame(n_days=1200, skill=0.1, seed=2),
-    })
+    meta = build_meta_features(
+        {
+            "m1": oof_frame(n_days=1200, skill=0.4, seed=1),
+            "m2": oof_frame(n_days=1200, skill=0.1, seed=2),
+        }
+    )
     coefs = fit_stack(meta, splitter=splitter()).coefficients
 
     assert set(coefs["feature"]) == {"pred_m1", "pred_m2"}
@@ -339,7 +359,7 @@ def test_stack_weights_the_stronger_base_model_higher():
     """The learned equivalent of the hand-set weights, earned from data."""
     strong = oof_frame(n_days=1600, skill=1.2, seed=1)
     weak = strong[["date", "symbol", "y_true"]].copy()
-    weak["y_pred"] = RNG.random(len(weak))     # pure noise
+    weak["y_pred"] = RNG.random(len(weak))  # pure noise
 
     meta = build_meta_features({"strong": strong, "noise": weak})
     coefs = fit_stack(meta, splitter=splitter()).coefficients.set_index("feature")
@@ -367,9 +387,11 @@ def test_stack_rejects_an_unlabelled_frame():
 
 def test_stack_finds_no_skill_in_noise():
     """Stacking noise must not manufacture signal."""
-    meta = build_meta_features({
-        "m1": oof_frame(n_days=1200, skill=0.0, seed=1),
-        "m2": oof_frame(n_days=1200, skill=0.0, seed=2),
-    })
+    meta = build_meta_features(
+        {
+            "m1": oof_frame(n_days=1200, skill=0.0, seed=1),
+            "m2": oof_frame(n_days=1200, skill=0.0, seed=2),
+        }
+    )
     auc = fit_stack(meta, splitter=splitter()).pooled_metrics["roc_auc"]
     assert 0.44 < auc < 0.56

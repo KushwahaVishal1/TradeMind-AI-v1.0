@@ -110,16 +110,17 @@ def rolling_windows(
 
         reportable = n >= min_observations
         metrics = (
-            classification_metrics(window[outcome_col], window[prob_col])
-            if reportable else {}
+            classification_metrics(window[outcome_col], window[prob_col]) if reportable else {}
         )
-        out.append(WindowMetrics(
-            window_days=days,
-            n_observations=n,
-            metrics=metrics,
-            minimum_detectable_effect=auc_minimum_detectable_effect(n),
-            reportable=reportable,
-        ))
+        out.append(
+            WindowMetrics(
+                window_days=days,
+                n_observations=n,
+                metrics=metrics,
+                minimum_detectable_effect=auc_minimum_detectable_effect(n),
+                reportable=reportable,
+            )
+        )
     return out
 
 
@@ -171,9 +172,7 @@ class PerformanceMonitor:
     baseline_brier: float | None = None
     windows: tuple[int, ...] = DEFAULT_WINDOWS
 
-    def evaluate(
-        self, resolved: pd.DataFrame, as_of: pd.Timestamp | None = None
-    ) -> dict:
+    def evaluate(self, resolved: pd.DataFrame, as_of: pd.Timestamp | None = None) -> dict:
         window_metrics = rolling_windows(resolved, as_of, self.windows)
         reportable = [w for w in window_metrics if w.reportable]
 

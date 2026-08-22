@@ -35,7 +35,7 @@ class Order:
 
     symbol: str
     decision_date: date
-    target_weight: float          # NaN means "leave the position alone"
+    target_weight: float  # NaN means "leave the position alone"
     signal: str
 
     @property
@@ -101,8 +101,11 @@ def execute_orders(
             continue
         price = open_prices.get(order.symbol)
         if price is None or price <= 0:
-            log.warning("%s: no execution price for %s; position preserved",
-                        execution_date, order.symbol)
+            log.warning(
+                "%s: no execution price for %s; position preserved",
+                execution_date,
+                order.symbol,
+            )
             continue
         costs = compute_costs(holding.shares * price, config.costs)
         fills.append(
@@ -112,8 +115,9 @@ def execute_orders(
     for order in buys:
         price = open_prices.get(order.symbol)
         if price is None or price <= 0:
-            log.warning("%s: no execution price for %s; skipping entry",
-                        execution_date, order.symbol)
+            log.warning(
+                "%s: no execution price for %s; skipping entry", execution_date, order.symbol
+            )
             continue
 
         holding = portfolio.position(order.symbol)
@@ -126,17 +130,13 @@ def execute_orders(
         outlay = delta * price + costs.total
         if outlay > portfolio.cash:
             # Scale down to what cash allows rather than failing the session.
-            affordable = math.floor(
-                portfolio.cash / (price * (1 + config.costs.per_side))
-            )
+            affordable = math.floor(portfolio.cash / (price * (1 + config.costs.per_side)))
             if affordable <= 0:
                 log.debug("%s: insufficient cash for %s", execution_date, order.symbol)
                 continue
             delta = affordable
             costs = compute_costs(delta * price, config.costs)
 
-        fills.append(
-            portfolio.buy(order.symbol, delta, price, costs, execution_date)
-        )
+        fills.append(portfolio.buy(order.symbol, delta, price, costs, execution_date))
 
     return fills

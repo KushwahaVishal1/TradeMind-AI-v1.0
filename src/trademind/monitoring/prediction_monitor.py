@@ -75,15 +75,14 @@ def resolve_pending(
     # A prediction whose outcome never arrives is a data-quality problem, not a
     # model problem. Surface it rather than letting the pending queue grow.
     if still_pending and as_of:
-        stale = [
-            d for d in still_pending
-            if (as_of - d).days > max_pending_sessions * 2
-        ]
+        stale = [d for d in still_pending if (as_of - d).days > max_pending_sessions * 2]
         unresolvable = len(stale)
         if stale:
             log.warning(
                 "%d prediction(s) have been pending for over %d sessions; their "
-                "outcomes may never arrive.", len(stale), max_pending_sessions,
+                "outcomes may never arrive.",
+                len(stale),
+                max_pending_sessions,
             )
 
     return ResolutionSummary(

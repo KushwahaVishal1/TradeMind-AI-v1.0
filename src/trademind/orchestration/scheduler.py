@@ -21,8 +21,9 @@ from ..ingestion.calendar import TradingCalendar
 DEFAULT_RUN_TIME = time(18, 0)
 
 
-def should_run_today(when: date | None = None,
-                     calendar: TradingCalendar | None = None) -> tuple[bool, str]:
+def should_run_today(
+    when: date | None = None, calendar: TradingCalendar | None = None
+) -> tuple[bool, str]:
     """Was ``when`` a trading session?"""
     when = when or date.today()
     calendar = calendar or TradingCalendar()

@@ -40,6 +40,7 @@ def make_pred(**overrides) -> Prediction:
 
 # -- determinism ---------------------------------------------------------
 
+
 def test_prediction_id_is_deterministic():
     assert make_pred().prediction_id == make_pred().prediction_id
 
@@ -51,6 +52,7 @@ def test_prediction_id_changes_with_model_version():
 
 
 # -- idempotency (the Phase 9 acceptance criterion) ----------------------
+
 
 def test_replaying_identical_prediction_creates_one_row(store):
     p = make_pred()
@@ -86,6 +88,7 @@ def test_new_model_version_coexists_with_old(store):
 
 # -- look-ahead guards ---------------------------------------------------
 
+
 def test_same_day_execution_is_rejected():
     with pytest.raises(ValueError, match="look-ahead"):
         make_pred(prediction_date="2023-06-15", execution_date="2023-06-15")
@@ -107,6 +110,7 @@ def test_probability_out_of_range_rejected():
 
 
 # -- outcomes ------------------------------------------------------------
+
 
 def test_resolution_scores_direction(store):
     pid = store.save(make_pred(calibrated_probability=0.58))
@@ -159,11 +163,10 @@ def test_orphan_outcome_rejected_by_foreign_key(store):
 
 # -- runs ----------------------------------------------------------------
 
+
 def test_run_lifecycle(store):
     run_id = store.start_run("daily", config_hash="abc123")
     store.finish_run(run_id, "SUCCESS")
 
-    row = store.conn.execute(
-        "SELECT * FROM runs WHERE run_id = ?", (run_id,)
-    ).fetchone()
+    row = store.conn.execute("SELECT * FROM runs WHERE run_id = ?", (run_id,)).fetchone()
     assert row["status"] == "SUCCESS" and row["finished_at"] is not None

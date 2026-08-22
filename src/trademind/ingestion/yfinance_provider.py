@@ -58,19 +58,21 @@ class YFinanceProvider(MarketDataProvider):
                     start=start.isoformat(),
                     end=(end + timedelta(days=1)).isoformat(),
                     interval="1d",
-                    auto_adjust=False,   # keep split-adjusted OHLC + actions
+                    auto_adjust=False,  # keep split-adjusted OHLC + actions
                     actions=True,
                 )
                 return df
             except Exception as exc:  # pragma: no cover - network dependent
                 last_exc = exc
-                log.warning("Fetch %s attempt %d/%d failed: %s",
-                            symbol, attempt, self.max_retries, exc)
+                log.warning(
+                    "Fetch %s attempt %d/%d failed: %s", symbol, attempt, self.max_retries, exc
+                )
                 if attempt < self.max_retries:
                     time.sleep(self.retry_delay * attempt)
 
-        raise ProviderError(f"Failed to fetch {symbol} after "
-                            f"{self.max_retries} attempts") from last_exc
+        raise ProviderError(
+            f"Failed to fetch {symbol} after {self.max_retries} attempts"
+        ) from last_exc
 
     # -- shaping -----------------------------------------------------------
 
@@ -85,9 +87,7 @@ class YFinanceProvider(MarketDataProvider):
 
         df = df.reset_index()
 
-        date_col = next(
-            (c for c in ("Date", "Datetime", "index") if c in df.columns), None
-        )
+        date_col = next((c for c in ("Date", "Datetime", "index") if c in df.columns), None)
         if date_col is None:
             raise ProviderError(f"No date column in yfinance response for {symbol}")
 
@@ -102,18 +102,20 @@ class YFinanceProvider(MarketDataProvider):
         if missing:
             raise ProviderError(f"yfinance response for {symbol} lacks {missing}")
 
-        out = pd.DataFrame({
-            "date": dates.dt.normalize(),
-            "symbol": symbol,
-            "open_split": df["Open"].astype(float),
-            "high_split": df["High"].astype(float),
-            "low_split": df["Low"].astype(float),
-            "close_split": df["Close"].astype(float),
-            "volume": df.get("Volume", 0).fillna(0).astype("int64"),
-            "dividend": df.get("Dividends", 0.0).fillna(0.0).astype(float),
-            # yfinance reports 0.0 on non-split days; the schema wants 1.0.
-            "split_ratio": df.get("Stock Splits", 0.0).fillna(0.0).astype(float),
-        })
+        out = pd.DataFrame(
+            {
+                "date": dates.dt.normalize(),
+                "symbol": symbol,
+                "open_split": df["Open"].astype(float),
+                "high_split": df["High"].astype(float),
+                "low_split": df["Low"].astype(float),
+                "close_split": df["Close"].astype(float),
+                "volume": df.get("Volume", 0).fillna(0).astype("int64"),
+                "dividend": df.get("Dividends", 0.0).fillna(0.0).astype(float),
+                # yfinance reports 0.0 on non-split days; the schema wants 1.0.
+                "split_ratio": df.get("Stock Splits", 0.0).fillna(0.0).astype(float),
+            }
+        )
         out.loc[out["split_ratio"] == 0.0, "split_ratio"] = 1.0
 
         out = out.dropna(subset=["close_split"])

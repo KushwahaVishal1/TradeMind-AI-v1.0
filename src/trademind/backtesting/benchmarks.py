@@ -48,8 +48,7 @@ def _close_prices(bars: dict[str, pd.DataFrame], when: date) -> dict[str, float]
     return out
 
 
-def _apply_actions(portfolio: Portfolio, bars: dict[str, pd.DataFrame],
-                   when: date) -> None:
+def _apply_actions(portfolio: Portfolio, bars: dict[str, pd.DataFrame], when: date) -> None:
     for symbol, df in bars.items():
         row = df[df["date"] == pd.Timestamp(when)]
         if row.empty:
@@ -74,14 +73,12 @@ def buy_and_hold(
     for i, when in enumerate(sessions):
         _apply_actions(portfolio, bars, when)
 
-        if i == 1:      # buy on the second session, matching the t+1 rule
+        if i == 1:  # buy on the second session, matching the t+1 rule
             prices = _open_prices(bars, when)
             if prices:
                 weight = 1.0 / len(prices)
                 for symbol, price in prices.items():
-                    shares = math.floor(
-                        (weight * config.initial_capital * 0.999) / price
-                    )
+                    shares = math.floor((weight * config.initial_capital * 0.999) / price)
                     if shares > 0:
                         costs = compute_costs(shares * price, config.costs)
                         if shares * price + costs.total <= portfolio.cash:

@@ -61,7 +61,9 @@ def _git_commit() -> str | None:
     try:
         out = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         return out.stdout.strip() or None
     except Exception:
@@ -84,10 +86,7 @@ class PipelineRun:
         return self.status == "SUCCESS"
 
     def render(self) -> str:
-        lines = [
-            f"=== {self.mode} run {self.run_id} | as of {self.as_of} "
-            f"| {self.status} ==="
-        ]
+        lines = [f"=== {self.mode} run {self.run_id} | as of {self.as_of} | {self.status} ==="]
         for r in self.results:
             lines.append(f"  {r}")
 
@@ -107,7 +106,7 @@ def build_jobs(mode: str, provider=None, retrain_fn=None) -> list[Job]:
     return [
         IngestionJob(provider),
         FeatureJob(),
-        OutcomeJob(),          # resolve before predicting; see module docstring
+        OutcomeJob(),  # resolve before predicting; see module docstring
         PredictionJob(),
         MonitoringJob(),
         RetrainingJob(retrain_fn),
@@ -141,8 +140,12 @@ def run_pipeline(
     )
 
     context = PipelineContext(
-        cfg=cfg, mode=mode, run_id=run_id, as_of=as_of,
-        store=store, lake=ParquetLake(cfg.data_root),
+        cfg=cfg,
+        mode=mode,
+        run_id=run_id,
+        as_of=as_of,
+        store=store,
+        lake=ParquetLake(cfg.data_root),
         artifacts=dict(artifacts or {}),
     )
     run = PipelineRun(run_id=run_id, mode=mode, as_of=as_of, context=context)
@@ -155,7 +158,8 @@ def run_pipeline(
             if result.status is JobStatus.FAILED and job.name in CRITICAL:
                 run.status = "FAILED"
                 store.finish_run(
-                    run_id, "FAILED",
+                    run_id,
+                    "FAILED",
                     error=f"{job.name}: {result.message}",
                 )
                 log.error("Pipeline halted: %s failed", job.name)
@@ -163,14 +167,15 @@ def run_pipeline(
 
         run.status = "SUCCESS" if context.ok else "FAILED"
         store.finish_run(
-            run_id, run.status,
-            error=None if context.ok else "; ".join(
-                f"{r.name}: {r.message}" for r in context.failed
-            ),
+            run_id,
+            run.status,
+            error=None
+            if context.ok
+            else "; ".join(f"{r.name}: {r.message}" for r in context.failed),
         )
         return run
 
-    except Exception as exc:                          # noqa: BLE001
+    except Exception as exc:
         log.exception("Pipeline crashed")
         run.status = "FAILED"
         store.finish_run(run_id, "FAILED", error=str(exc))

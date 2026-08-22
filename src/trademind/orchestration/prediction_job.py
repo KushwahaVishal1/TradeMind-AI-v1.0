@@ -30,7 +30,6 @@ data was revised or the pipeline is non-deterministic.
 from __future__ import annotations
 
 import logging
-from datetime import date
 
 import numpy as np
 import pandas as pd
@@ -121,7 +120,8 @@ class PredictionJob(Job):
                 predicted_return=d.expected_return,
                 signal=d.signal.value,
                 target_weight=(
-                    None if d.target_weight is None or np.isnan(d.target_weight)
+                    None
+                    if d.target_weight is None or np.isnan(d.target_weight)
                     else float(d.target_weight)
                 ),
                 risk_bucket=d.risk_bucket.value,
@@ -149,7 +149,8 @@ class PredictionJob(Job):
         engine = self._engine(cfg)
         if engine is None:
             return JobResult(
-                self.name, JobStatus.SKIPPED,
+                self.name,
+                JobStatus.SKIPPED,
                 "decision thresholds are null; run `main.py thresholds` first",
             )
 
@@ -160,7 +161,8 @@ class PredictionJob(Job):
         signal_frame = context.get("signals")
         if signal_frame is None or signal_frame.empty:
             return JobResult(
-                self.name, JobStatus.SKIPPED,
+                self.name,
+                JobStatus.SKIPPED,
                 "no calibrated signals; run the ensemble stage first",
             )
 
@@ -178,8 +180,7 @@ class PredictionJob(Job):
         }
 
         target_dates = (
-            [context.as_of] if context.mode == "daily"
-            else sorted({d for _, d in signals})
+            [context.as_of] if context.mode == "daily" else sorted({d for _, d in signals})
         )
 
         all_decisions = []
@@ -190,19 +191,23 @@ class PredictionJob(Job):
                 sig = signals.get((row.symbol, when))
                 if sig is None:
                     continue
-                inputs.append(DecisionInput(
-                    symbol=row.symbol,
-                    decision_date=when,
-                    calibrated_probability=sig["calibrated"],
-                    expected_return=(
-                        sig["expected_return"]
-                        if np.isfinite(sig["expected_return"]) else None
-                    ),
-                    volatility=float(getattr(row, "volatility_20", np.nan))
-                    if hasattr(row, "volatility_20") else None,
-                    position=Position(row.symbol),
-                    features_complete=True,
-                ))
+                inputs.append(
+                    DecisionInput(
+                        symbol=row.symbol,
+                        decision_date=when,
+                        calibrated_probability=sig["calibrated"],
+                        expected_return=(
+                            sig["expected_return"]
+                            if np.isfinite(sig["expected_return"])
+                            else None
+                        ),
+                        volatility=float(getattr(row, "volatility_20", np.nan))
+                        if hasattr(row, "volatility_20")
+                        else None,
+                        position=Position(row.symbol),
+                        features_complete=True,
+                    )
+                )
             if inputs:
                 all_decisions.extend(engine.decide_batch(inputs))
 
@@ -210,8 +215,12 @@ class PredictionJob(Job):
             return JobResult(self.name, JobStatus.SUCCESS, "no decisions to persist")
 
         written, skipped, problems = self._persist(
-            context, all_decisions, signals,
-            model_version, training_start, training_end,
+            context,
+            all_decisions,
+            signals,
+            model_version,
+            training_start,
+            training_end,
         )
 
         for p in problems[:5]:
@@ -221,11 +230,13 @@ class PredictionJob(Job):
 
         if problems and written == 0:
             return JobResult(
-                self.name, JobStatus.FAILED,
+                self.name,
+                JobStatus.FAILED,
                 f"all {len(problems)} predictions rejected; first: {problems[0][:120]}",
                 details={"problems": problems[:20]},
             )
         message = f"{skipped} conflicts skipped" if skipped else ""
         status = JobStatus.PARTIAL if problems else JobStatus.SUCCESS
-        return JobResult(self.name, status, message, records=written,
-                         details={"problems": problems[:20]})
+        return JobResult(
+            self.name, status, message, records=written, details={"problems": problems[:20]}
+        )

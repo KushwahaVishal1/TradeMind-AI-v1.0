@@ -63,17 +63,13 @@ def auc_stderr(auc: float, n_pos: int, n_neg: int) -> float:
         return float("nan")
     q1 = auc / (2.0 - auc)
     q2 = 2.0 * auc**2 / (1.0 + auc)
-    var = (
-        auc * (1 - auc)
-        + (n_pos - 1) * (q1 - auc**2)
-        + (n_neg - 1) * (q2 - auc**2)
-    ) / (n_pos * n_neg)
+    var = (auc * (1 - auc) + (n_pos - 1) * (q1 - auc**2) + (n_neg - 1) * (q2 - auc**2)) / (
+        n_pos * n_neg
+    )
     return float(np.sqrt(max(var, 0.0)))
 
 
-def classification_metrics(
-    y_true, y_prob, threshold: float = 0.5
-) -> dict[str, float]:
+def classification_metrics(y_true, y_prob, threshold: float = 0.5) -> dict[str, float]:
     """Full directional metrics, with baselines attached."""
     yt, yp = _clean_pair(y_true, y_prob)
     if len(yt) == 0:
@@ -119,7 +115,8 @@ def classification_metrics(
     out["brier_baseline"] = float(base_rate * (1 - base_rate))
     out["brier_skill_score"] = (
         1.0 - out["brier"] / out["brier_baseline"]
-        if out["brier_baseline"] > 0 else float("nan")
+        if out["brier_baseline"] > 0
+        else float("nan")
     )
     return out
 
@@ -162,7 +159,8 @@ def regression_metrics(y_true, y_pred) -> dict[str, float]:
     nonzero = yt != 0
     out["directional_accuracy"] = (
         float(np.mean(np.sign(yp[nonzero]) == np.sign(yt[nonzero])))
-        if nonzero.any() else float("nan")
+        if nonzero.any()
+        else float("nan")
     )
     out["up_rate"] = float((yt > 0).mean())
     return out

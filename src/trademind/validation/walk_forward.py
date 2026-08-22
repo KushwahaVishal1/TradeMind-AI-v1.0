@@ -21,13 +21,13 @@ that means something.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterable, Sequence
+from typing import Any
 
 import numpy as np
 import pandas as pd
 
-from .embargo import GapConfig
 from .purged_split import Fold, PurgedWalkForwardSplit, assert_fold_is_clean
 
 log = logging.getLogger(__name__)
@@ -97,9 +97,10 @@ class WalkForwardResult:
         for r in self.folds:
             metrics = " ".join(f"{k}={v:.4f}" for k, v in r.metrics.items())
             lines.append(f"  {r.fold} | {metrics}")
-        lines.append("  aggregate: " + " ".join(
-            f"{k}={v:.4f}" for k, v in agg.items() if k.endswith("_mean")
-        ))
+        lines.append(
+            "  aggregate: "
+            + " ".join(f"{k}={v:.4f}" for k, v in agg.items() if k.endswith("_mean"))
+        )
         return "\n".join(lines)
 
 
@@ -136,17 +137,18 @@ def walk_forward(
 
         pred_frame = None
         if keep_predictions:
-            pred_frame = pd.DataFrame({
-                "date": val["date"].to_numpy(),
-                "symbol": val["symbol"].to_numpy() if "symbol" in val else None,
-                "fold": fold.index,
-                "y_true": val[label_col].to_numpy(),
-                "y_pred": np.asarray(preds).ravel(),
-            })
+            pred_frame = pd.DataFrame(
+                {
+                    "date": val["date"].to_numpy(),
+                    "symbol": val["symbol"].to_numpy() if "symbol" in val else None,
+                    "fold": fold.index,
+                    "y_true": val[label_col].to_numpy(),
+                    "y_pred": np.asarray(preds).ravel(),
+                }
+            )
 
         results.append(FoldResult(fold, metrics, dict(params), pred_frame))
-        log.info("%s | %s", fold,
-                 " ".join(f"{k}={v:.4f}" for k, v in metrics.items()))
+        log.info("%s | %s", fold, " ".join(f"{k}={v:.4f}" for k, v in metrics.items()))
 
     return WalkForwardResult(results)
 
@@ -203,29 +205,39 @@ def nested_walk_forward(
                 scores.append(score_fn(iva[label_col], p)[selection_metric])
 
             mean_score = float(np.mean(scores))
-            better = (
-                best_score is None
-                or (mean_score > best_score if maximise else mean_score < best_score)
+            better = best_score is None or (
+                mean_score > best_score if maximise else mean_score < best_score
             )
             if better:
                 best_params, best_score = candidate, mean_score
 
-        log.info("fold %d: selected %s (inner %s=%.4f)",
-                 fold.index, best_params, selection_metric, best_score)
+        log.info(
+            "fold %d: selected %s (inner %s=%.4f)",
+            fold.index,
+            best_params,
+            selection_metric,
+            best_score,
+        )
 
         model = fit_fn(train[list(feature_cols)], train[label_col], best_params)
         preds = predict_fn(model, val[list(feature_cols)])
         metrics = score_fn(val[label_col], preds)
 
-        results.append(FoldResult(
-            fold, metrics, dict(best_params),
-            pd.DataFrame({
-                "date": val["date"].to_numpy(),
-                "symbol": val["symbol"].to_numpy() if "symbol" in val else None,
-                "fold": fold.index,
-                "y_true": val[label_col].to_numpy(),
-                "y_pred": np.asarray(preds).ravel(),
-            }),
-        ))
+        results.append(
+            FoldResult(
+                fold,
+                metrics,
+                dict(best_params),
+                pd.DataFrame(
+                    {
+                        "date": val["date"].to_numpy(),
+                        "symbol": val["symbol"].to_numpy() if "symbol" in val else None,
+                        "fold": fold.index,
+                        "y_true": val[label_col].to_numpy(),
+                        "y_pred": np.asarray(preds).ravel(),
+                    }
+                ),
+            )
+        )
 
     return WalkForwardResult(results)

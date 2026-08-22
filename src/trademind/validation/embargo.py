@@ -100,9 +100,7 @@ class GapConfig:
         )
 
 
-def purge_mask(
-    dates: pd.Series, val_start: pd.Timestamp, purge: int
-) -> np.ndarray:
+def purge_mask(dates: pd.Series, val_start: pd.Timestamp, purge: int) -> np.ndarray:
     """True for training dates that must be dropped ahead of ``val_start``.
 
     Measured in *sessions*, not calendar days, so a weekend does not silently

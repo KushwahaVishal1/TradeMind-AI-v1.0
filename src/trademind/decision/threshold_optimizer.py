@@ -126,8 +126,9 @@ class FeasibilityReport:
                 f"  expected edge        {self.expected_edge * 10000:6.1f} bps",
             ]
         lines.append(
-            "  VERDICT: costs can be cleared" if self.feasible else
-            "  VERDICT: NOT FEASIBLE — expected edge is below the round-trip "
+            "  VERDICT: costs can be cleared"
+            if self.feasible
+            else "  VERDICT: NOT FEASIBLE — expected edge is below the round-trip "
             "cost. No threshold fixes this; the holding period or the cost "
             "model has to change."
         )
@@ -187,6 +188,7 @@ def minimum_expected_return(costs: CostModel, margin: float = 1.5) -> float:
 # =====================================================================
 # Threshold search
 # =====================================================================
+
 
 @dataclass(frozen=True)
 class Thresholds:
@@ -294,23 +296,28 @@ def optimise_thresholds_out_of_fold(
         if len(prior) < min_fit_rows:
             continue
 
-        chosen = _search(prior, buy_grid, floor, prob_col, return_col,
-                         expected_return_col, cost)
+        chosen = _search(
+            prior, buy_grid, floor, prob_col, return_col, expected_return_col, cost
+        )
 
         holdout = data[data["date"].isin(set(dates[block]))]
         scored = evaluate_threshold(
-            holdout[prob_col].to_numpy(), holdout[return_col].to_numpy(),
-            chosen["buy"], floor,
+            holdout[prob_col].to_numpy(),
+            holdout[return_col].to_numpy(),
+            chosen["buy"],
+            floor,
             holdout[expected_return_col].to_numpy() if expected_return_col else None,
             cost,
         )
-        rows.append({
-            "block": k,
-            "selected_buy": chosen["buy"],
-            "in_block_net": chosen["net_return_total"],
-            "out_of_block_net": scored["net_return_total"],
-            "out_of_block_trades": scored["n_trades"],
-        })
+        rows.append(
+            {
+                "block": k,
+                "selected_buy": chosen["buy"],
+                "in_block_net": chosen["net_return_total"],
+                "out_of_block_net": scored["net_return_total"],
+                "out_of_block_trades": scored["n_trades"],
+            }
+        )
 
     stability = pd.DataFrame(rows)
     if not stability.empty:
@@ -322,11 +329,11 @@ def optimise_thresholds_out_of_fold(
         if pd.notna(spread) and spread > 0.05:
             log.warning(
                 "Selected buy threshold swings by %.3f between blocks. The "
-                "threshold is fitting noise, not finding a boundary.", spread,
+                "threshold is fitting noise, not finding a boundary.",
+                spread,
             )
 
-    final = _search(data, buy_grid, floor, prob_col, return_col,
-                    expected_return_col, cost)
+    final = _search(data, buy_grid, floor, prob_col, return_col, expected_return_col, cost)
 
     thresholds = Thresholds(
         buy=float(final["buy"]),
@@ -340,8 +347,11 @@ def optimise_thresholds_out_of_fold(
     log.info(
         "Derived thresholds: buy=%.3f sell=%.3f min_expected_return=%.5f "
         "(cost floor %.5f x margin %.1f)",
-        thresholds.buy, thresholds.sell, thresholds.min_expected_return,
-        costs.round_trip, margin,
+        thresholds.buy,
+        thresholds.sell,
+        thresholds.min_expected_return,
+        costs.round_trip,
+        margin,
     )
     return thresholds, stability
 
@@ -360,10 +370,7 @@ def _search(
     rets = data[return_col].to_numpy()
     exp = data[expected_return_col].to_numpy() if expected_return_col else None
 
-    scored = [
-        evaluate_threshold(probs, rets, float(b), floor, exp, cost)
-        for b in buy_grid
-    ]
+    scored = [evaluate_threshold(probs, rets, float(b), floor, exp, cost) for b in buy_grid]
     best = max(scored, key=lambda r: r["net_return_total"])
 
     if best["n_trades"] == 0:

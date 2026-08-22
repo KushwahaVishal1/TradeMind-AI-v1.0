@@ -120,7 +120,8 @@ def add_labels(df: pd.DataFrame, horizon: int = 1) -> pd.DataFrame:
     out[RESEARCH_LABEL] = research_forward_return(out, horizon)
 
     direction = np.where(
-        out[TRADEABLE_LABEL].isna(), np.nan,
+        out[TRADEABLE_LABEL].isna(),
+        np.nan,
         (out[TRADEABLE_LABEL] > 0).astype(float),
     )
     out[DIRECTION_LABEL] = direction

@@ -37,9 +37,18 @@ WARMUP_SESSIONS = 252
 
 # Columns carried through for joining and backtesting, never fed to a model.
 PASSTHROUGH = (
-    "date", "symbol",
-    "open_raw", "high_raw", "low_raw", "close_raw",
-    "adj_close", "adj_open", "close_split", "volume", "split_ratio", "dividend",
+    "date",
+    "symbol",
+    "open_raw",
+    "high_raw",
+    "low_raw",
+    "close_raw",
+    "adj_close",
+    "adj_open",
+    "close_split",
+    "volume",
+    "split_ratio",
+    "dividend",
 )
 
 
@@ -126,8 +135,11 @@ def build_panel(
     n_feat = len(feature_columns(panel))
     log.info(
         "Panel: %d rows | %d symbols | %d features | %s..%s",
-        len(panel), panel["symbol"].nunique(), n_feat,
-        panel["date"].min().date(), panel["date"].max().date(),
+        len(panel),
+        panel["symbol"].nunique(),
+        n_feat,
+        panel["date"].min().date(),
+        panel["date"].max().date(),
     )
     return panel
 
@@ -140,15 +152,27 @@ def coverage_report(panel: pd.DataFrame) -> pd.DataFrame:
     baseline.
     """
     cols = feature_columns(panel)
-    return pd.DataFrame({
-        "feature": cols,
-        "missing_rate": [panel[c].isna().mean() for c in cols],
-        "n_unique": [panel[c].nunique() for c in cols],
-    }).sort_values("missing_rate", ascending=False).reset_index(drop=True)
+    return (
+        pd.DataFrame(
+            {
+                "feature": cols,
+                "missing_rate": [panel[c].isna().mean() for c in cols],
+                "n_unique": [panel[c].nunique() for c in cols],
+            }
+        )
+        .sort_values("missing_rate", ascending=False)
+        .reset_index(drop=True)
+    )
 
 
 __all__ = [
-    "build_symbol_features", "build_panel", "feature_columns",
-    "trim_warmup", "drop_unlabelled", "coverage_report",
-    "TRADEABLE_LABEL", "DIRECTION_LABEL", "WARMUP_SESSIONS",
+    "DIRECTION_LABEL",
+    "TRADEABLE_LABEL",
+    "WARMUP_SESSIONS",
+    "build_panel",
+    "build_symbol_features",
+    "coverage_report",
+    "drop_unlabelled",
+    "feature_columns",
+    "trim_warmup",
 ]

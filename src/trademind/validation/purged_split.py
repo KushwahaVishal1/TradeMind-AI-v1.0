@@ -34,8 +34,8 @@ whether the model decays on old data.
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Iterator
 
 import numpy as np
 import pandas as pd
@@ -159,7 +159,8 @@ class PurgedWalkForwardSplit:
         if len(val_starts) < self.n_splits:
             log.warning(
                 "Requested %d folds but only %d fit the available history",
-                self.n_splits, len(val_starts),
+                self.n_splits,
+                len(val_starts),
             )
 
         arr = dates.to_numpy()

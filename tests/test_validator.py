@@ -16,19 +16,23 @@ from trademind.ingestion.data_validator import DataValidator
 def frame(closes, splits=None, divs=None, volume=None, start="2023-01-02"):
     n = len(closes)
     closes = np.asarray(closes, dtype=float)
-    return pd.DataFrame({
-        "date": pd.bdate_range(start, periods=n),
-        "symbol": "TEST.NS",
-        "open_split": closes,
-        "high_split": closes * 1.01,
-        "low_split": closes * 0.99,
-        "close_split": closes,
-        "volume": np.asarray(volume if volume is not None else [100_000] * n,
-                             dtype="int64"),
-        "dividend": np.asarray(divs if divs is not None else [0.0] * n, dtype=float),
-        "split_ratio": np.asarray(splits if splits is not None else [1.0] * n,
-                                  dtype=float),
-    })
+    return pd.DataFrame(
+        {
+            "date": pd.bdate_range(start, periods=n),
+            "symbol": "TEST.NS",
+            "open_split": closes,
+            "high_split": closes * 1.01,
+            "low_split": closes * 0.99,
+            "close_split": closes,
+            "volume": np.asarray(
+                volume if volume is not None else [100_000] * n, dtype="int64"
+            ),
+            "dividend": np.asarray(divs if divs is not None else [0.0] * n, dtype=float),
+            "split_ratio": np.asarray(
+                splits if splits is not None else [1.0] * n, dtype=float
+            ),
+        }
+    )
 
 
 def validate(df, symbol="TEST.NS"):
@@ -40,6 +44,7 @@ def codes(report):
 
 
 # -- clean data ----------------------------------------------------------
+
 
 def test_clean_data_passes():
     report = validate(frame([100 + i * 0.5 for i in range(30)]))
@@ -54,6 +59,7 @@ def test_empty_frame_is_an_error():
 
 
 # -- structural checks ---------------------------------------------------
+
 
 def test_unsorted_dates_flagged():
     df = frame([100.0, 101.0, 102.0]).iloc[::-1].reset_index(drop=True)
@@ -85,12 +91,13 @@ def test_high_below_low_flagged():
 
 def test_close_outside_bar_flagged():
     df = frame([100.0, 101.0, 102.0])
-    df.loc[1, "close_split"] = 500.0   # above the high
+    df.loc[1, "close_split"] = 500.0  # above the high
     report = validate(df)
     assert "HIGH_BELOW_CLOSE" in codes(report)
 
 
 # -- volume --------------------------------------------------------------
+
 
 def test_negative_volume_is_an_error():
     df = frame([100.0, 101.0], volume=[100, -5])
@@ -103,21 +110,22 @@ def test_zero_volume_is_a_warning_not_an_error():
     df = frame([100.0, 101.0, 102.0], volume=[100_000, 0, 100_000])
     report = validate(df)
     assert "ZERO_VOLUME" in codes(report)
-    assert report.ok          # suspicious, but does not block ingestion
+    assert report.ok  # suspicious, but does not block ingestion
 
 
 # -- jumps and corporate actions -----------------------------------------
+
 
 def test_unexplained_jump_flagged():
     """A 60% move with no recorded action almost certainly means a missed split."""
     df = frame([100.0, 100.0, 40.0, 40.0])
     report = validate(df)
     assert "ABNORMAL_JUMP" in codes(report)
-    assert not report.ok      # >50% is an ERROR
+    assert not report.ok  # >50% is an ERROR
 
 
 def test_moderate_jump_warns_but_does_not_block():
-    df = frame([100.0, 100.0, 75.0, 75.0])   # -25%
+    df = frame([100.0, 100.0, 75.0, 75.0])  # -25%
     report = validate(df)
     assert "ABNORMAL_JUMP" in codes(report)
     assert report.ok
@@ -154,6 +162,7 @@ def test_absurd_dividend_warns():
 
 # -- staleness -----------------------------------------------------------
 
+
 def test_stale_price_run_warns():
     df = frame([100.0] * 8)
     report = validate(df)
@@ -168,6 +177,7 @@ def test_short_flat_run_is_fine():
 
 # -- the no-repair guarantee ---------------------------------------------
 
+
 def test_validator_never_mutates_input():
     """Report, never silently fix. Verified by comparing before and after."""
     df = frame([100.0, -5.0, 500.0, 100.0], volume=[100, 0, -3, 100])
@@ -179,6 +189,7 @@ def test_validator_never_mutates_input():
 
 
 # -- reporting -----------------------------------------------------------
+
 
 def test_summary_counts_by_severity():
     df = frame([100.0, 101.0, 102.0], volume=[100_000, 0, 100_000])

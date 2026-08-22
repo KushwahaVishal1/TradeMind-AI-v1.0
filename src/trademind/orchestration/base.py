@@ -43,7 +43,7 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from enum import Enum
 
 log = logging.getLogger(__name__)
@@ -78,10 +78,7 @@ def assert_temporally_valid(
             "predictions cannot be shown to be free of look-ahead. Refusing."
         )
 
-    end = (
-        date.fromisoformat(training_end) if isinstance(training_end, str)
-        else training_end
-    )
+    end = date.fromisoformat(training_end) if isinstance(training_end, str) else training_end
     if end >= prediction_date:
         raise TemporalValidityError(
             f"Model {model_version} was trained through {end} and cannot "
@@ -121,19 +118,21 @@ class Job(ABC):
     name: str = "job"
 
     @abstractmethod
-    def execute(self, context: "PipelineContext") -> JobResult:
+    def execute(self, context: PipelineContext) -> JobResult:
         """Do the work. Must not raise; wrap failures in a FAILED result."""
 
-    def run(self, context: "PipelineContext") -> JobResult:
+    def run(self, context: PipelineContext) -> JobResult:
         """Execute with timing and a last-resort exception boundary."""
         started = time.monotonic()
         try:
             result = self.execute(context)
-        except Exception as exc:                      # noqa: BLE001
+        except Exception as exc:
             log.exception("%s raised", self.name)
             result = JobResult(
-                self.name, JobStatus.FAILED,
-                message=f"unhandled exception: {exc}", error=str(exc),
+                self.name,
+                JobStatus.FAILED,
+                message=f"unhandled exception: {exc}",
+                error=str(exc),
             )
         result.duration_seconds = time.monotonic() - started
         log.info("%s", result)
@@ -184,12 +183,12 @@ def reap_stale_runs(store, hours: int = STALE_RUN_HOURS) -> int:
     "is anything executing?" unanswerable and lets a scheduler stack overlapping
     runs. Reaping on startup keeps the run table honest.
     """
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+    cutoff = (datetime.now(UTC) - timedelta(hours=hours)).isoformat()
     cursor = store.conn.execute(
         "UPDATE runs SET status = 'FAILED', finished_at = ?, "
         "error = 'abandoned; reaped on startup' "
         "WHERE status = 'RUNNING' AND started_at < ?",
-        (datetime.now(timezone.utc).isoformat(timespec="seconds"), cutoff),
+        (datetime.now(UTC).isoformat(timespec="seconds"), cutoff),
     )
     n = cursor.rowcount or 0
     if n:

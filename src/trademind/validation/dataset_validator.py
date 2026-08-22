@@ -25,7 +25,7 @@ import hashlib
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -97,7 +97,8 @@ def split_development(
     if n_trimmed:
         log.info(
             "Trimmed %d row(s) before the locked boundary; their labels reach "
-            "into the final-test window.", n_trimmed,
+            "into the final-test window.",
+            n_trimmed,
         )
 
     log.info(
@@ -139,7 +140,7 @@ class FinalTestLock:
             final_test_start=boundary,
             fingerprint=_fingerprint(locked, date_col),
             n_rows=len(locked),
-            created_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            created_at=datetime.now(UTC).isoformat(timespec="seconds"),
         )
 
     def unlock(
@@ -172,28 +173,35 @@ class FinalTestLock:
             )
 
         self._unlocked = True
-        self.accesses.append({
-            "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-            "reason": reason,
-            "n_rows": len(locked),
-        })
+        self.accesses.append(
+            {
+                "at": datetime.now(UTC).isoformat(timespec="seconds"),
+                "reason": reason,
+                "n_rows": len(locked),
+            }
+        )
         log.warning(
             "FINAL TEST UNLOCKED (%d rows, from %s). Reason: %s. "
             "Nothing may be tuned after this point.",
-            len(locked), boundary.date(), reason,
+            len(locked),
+            boundary.date(),
+            reason,
         )
         return locked
 
     # -- persistence ------------------------------------------------------
 
     def to_json(self) -> str:
-        return json.dumps({
-            "final_test_start": self.final_test_start.isoformat(),
-            "fingerprint": self.fingerprint,
-            "n_rows": self.n_rows,
-            "created_at": self.created_at,
-            "accesses": self.accesses,
-        }, indent=2)
+        return json.dumps(
+            {
+                "final_test_start": self.final_test_start.isoformat(),
+                "fingerprint": self.fingerprint,
+                "n_rows": self.n_rows,
+                "created_at": self.created_at,
+                "accesses": self.accesses,
+            },
+            indent=2,
+        )
 
     def save(self, path: str | Path) -> Path:
         path = Path(path)
@@ -225,13 +233,15 @@ def _fingerprint(df: pd.DataFrame, date_col: str) -> str:
 
     numeric = df.select_dtypes("number")
     checksum = float(numeric.to_numpy(dtype="float64", na_value=0.0).sum())
-    payload = "|".join([
-        str(len(df)),
-        str(len(df.columns)),
-        str(pd.to_datetime(df[date_col]).min()),
-        str(pd.to_datetime(df[date_col]).max()),
-        f"{checksum:.6f}",
-    ])
+    payload = "|".join(
+        [
+            str(len(df)),
+            str(len(df.columns)),
+            str(pd.to_datetime(df[date_col]).min()),
+            str(pd.to_datetime(df[date_col]).max()),
+            f"{checksum:.6f}",
+        ]
+    )
     return hashlib.sha256(payload.encode()).hexdigest()[:16]
 
 

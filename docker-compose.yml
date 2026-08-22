@@ -20,7 +20,4 @@ services:
     volumes:
       - ./data:/app/data
       - ./reports:/app/reports
-    command: >
-      sh -c "pip install streamlit &&
-             streamlit run dashboard/app.py
-             --server.address=0.0.0.0 --server.port=8501"
+    command: python -m streamlit run dashboard/app.py --server.address=0.0.0.0 --server.port=8501

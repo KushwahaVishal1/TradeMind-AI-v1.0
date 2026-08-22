@@ -22,18 +22,21 @@ from trademind.storage import PredictionStore, init_db
 def bars(closes, splits=None, divs=None, symbol="TEST.NS"):
     n = len(closes)
     closes = np.asarray(closes, dtype=float)
-    return pd.DataFrame({
-        "date": pd.bdate_range("2023-01-02", periods=n),
-        "symbol": symbol,
-        "open_split": closes,
-        "high_split": closes * 1.01,
-        "low_split": closes * 0.99,
-        "close_split": closes,
-        "volume": np.full(n, 100_000, dtype="int64"),
-        "dividend": np.asarray(divs if divs is not None else [0.0] * n, dtype=float),
-        "split_ratio": np.asarray(splits if splits is not None else [1.0] * n,
-                                  dtype=float),
-    })
+    return pd.DataFrame(
+        {
+            "date": pd.bdate_range("2023-01-02", periods=n),
+            "symbol": symbol,
+            "open_split": closes,
+            "high_split": closes * 1.01,
+            "low_split": closes * 0.99,
+            "close_split": closes,
+            "volume": np.full(n, 100_000, dtype="int64"),
+            "dividend": np.asarray(divs if divs is not None else [0.0] * n, dtype=float),
+            "split_ratio": np.asarray(
+                splits if splits is not None else [1.0] * n, dtype=float
+            ),
+        }
+    )
 
 
 class StubProvider(MarketDataProvider):
@@ -61,7 +64,8 @@ class MemoryLake:
         prev = self.data.get(symbol)
         merged = pd.concat([prev, df]) if prev is not None else df
         self.data[symbol] = (
-            merged.sort_values("date").drop_duplicates("date", keep="last")
+            merged.sort_values("date")
+            .drop_duplicates("date", keep="last")
             .reset_index(drop=True)
         )
         return symbol
@@ -90,9 +94,11 @@ START, END = date(2023, 1, 1), date(2023, 3, 1)
 
 # -- happy path ----------------------------------------------------------
 
+
 def test_clean_symbol_is_written(tmp_path):
-    ing, lake, _, conn = pipeline({"TEST.NS": bars([100 + i for i in range(25)])},
-                                  tmp_path=tmp_path)
+    ing, lake, _, conn = pipeline(
+        {"TEST.NS": bars([100 + i for i in range(25)])}, tmp_path=tmp_path
+    )
     result = ing.ingest_symbol("TEST.NS", START, END)
 
     assert result.ok
@@ -117,15 +123,16 @@ def test_derived_price_columns_reach_the_lake(tmp_path):
 
 # -- bad data must not be persisted --------------------------------------
 
+
 def test_error_severity_blocks_the_write(tmp_path):
-    bad = bars([100.0, 101.0, -5.0, 102.0])       # negative price
+    bad = bars([100.0, 101.0, -5.0, 102.0])  # negative price
     ing, lake, _, conn = pipeline({"TEST.NS": bad}, tmp_path=tmp_path)
 
     result = ing.ingest_symbol("TEST.NS", START, END)
 
     assert not result.ok
     assert not result.written
-    assert lake.read_raw("TEST.NS") is None       # nothing written
+    assert lake.read_raw("TEST.NS") is None  # nothing written
     conn.close()
 
 
@@ -172,6 +179,7 @@ def test_empty_response_is_an_error(tmp_path):
 
 # -- universe-level behaviour --------------------------------------------
 
+
 def test_one_bad_symbol_does_not_stop_the_others(tmp_path):
     frames = {
         "GOOD1.NS": bars([100 + i for i in range(20)], symbol="GOOD1.NS"),
@@ -190,9 +198,7 @@ def test_one_bad_symbol_does_not_stop_the_others(tmp_path):
 
 def test_issues_are_persisted_for_the_retraining_gate(tmp_path):
     """Phase 8 reads this table: an unresolved ERROR blocks retraining."""
-    ing, _, store, conn = pipeline(
-        {"TEST.NS": bars([100.0, -1.0, 102.0])}, tmp_path=tmp_path
-    )
+    ing, _, store, conn = pipeline({"TEST.NS": bars([100.0, -1.0, 102.0])}, tmp_path=tmp_path)
     run_id = store.start_run("test", config_hash="x")
     ing.ingest_symbol("TEST.NS", START, END, run_id=run_id)
 

@@ -18,12 +18,17 @@ import json
 import os
 import platform
 import subprocess
-import sys
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 TRACKED_PACKAGES = (
-    "numpy", "pandas", "scikit-learn", "scipy", "pyarrow", "duckdb", "yfinance",
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "scipy",
+    "pyarrow",
+    "duckdb",
+    "yfinance",
 )
 
 
@@ -69,7 +74,7 @@ class Provenance:
     """A complete record of the conditions a run executed under."""
 
     captured_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds")
+        default_factory=lambda: datetime.now(UTC).isoformat(timespec="seconds")
     )
     python_version: str = field(default_factory=platform.python_version)
     python_implementation: str = field(default_factory=platform.python_implementation)
@@ -84,11 +89,14 @@ class Provenance:
     @property
     def environment_hash(self) -> str:
         """Hash of everything that could silently change results."""
-        payload = json.dumps({
-            "python": self.python_version,
-            "implementation": self.python_implementation,
-            "packages": self.packages,
-        }, sort_keys=True)
+        payload = json.dumps(
+            {
+                "python": self.python_version,
+                "implementation": self.python_implementation,
+                "packages": self.packages,
+            },
+            sort_keys=True,
+        )
         return hashlib.sha256(payload.encode()).hexdigest()[:16]
 
     @property
@@ -127,10 +135,8 @@ class Provenance:
             f"{' [DIRTY]' if self.git.get('dirty') else ''} "
             f"branch {self.git.get('branch') or 'n/a'}",
             f"environment hash {self.environment_hash}",
-            "packages: " + ", ".join(
-                f"{k}=={v}" for k, v in self.packages.items()
-                if v != "not installed"
-            ),
+            "packages: "
+            + ", ".join(f"{k}=={v}" for k, v in self.packages.items() if v != "not installed"),
         ]
         for w in self.warnings():
             lines.append(f"  WARNING: {w}")
@@ -143,7 +149,8 @@ def capture(config_hash: str | None = None, seed: int = 42) -> Provenance:
         config_hash=config_hash,
         random_seed=seed,
         environment_variables={
-            k: v for k, v in os.environ.items()
+            k: v
+            for k, v in os.environ.items()
             if k.startswith(("TRADEMIND_", "PYTHONHASHSEED"))
         },
     )
@@ -169,5 +176,6 @@ def set_deterministic_seeds(seed: int = 42) -> None:
         warnings.warn(
             f"PYTHONHASHSEED is {os.environ.get('PYTHONHASHSEED')!r}; set it to "
             f"{seed} before starting Python for full determinism.",
-            RuntimeWarning, stacklevel=2,
+            RuntimeWarning,
+            stacklevel=2,
         )

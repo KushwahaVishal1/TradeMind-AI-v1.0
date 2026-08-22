@@ -122,8 +122,10 @@ class DataValidator:
         days = sorted({pd.Timestamp(d).date() for d in dupes["date"]})
         return [
             Issue(
-                "ERROR", "DUPLICATE_DATES",
-                f"{len(days)} duplicated session(s), e.g. {days[:5]}", symbol,
+                "ERROR",
+                "DUPLICATE_DATES",
+                f"{len(days)} duplicated session(s), e.g. {days[:5]}",
+                symbol,
             )
         ]
 
@@ -135,9 +137,11 @@ class DataValidator:
             if not bad.empty:
                 out.append(
                     Issue(
-                        "ERROR", "INVALID_PRICE",
+                        "ERROR",
+                        "INVALID_PRICE",
                         f"{len(bad)} non-positive or missing value(s) in {col}",
-                        symbol, pd.Timestamp(bad["date"].iloc[0]).date(),
+                        symbol,
+                        pd.Timestamp(bad["date"].iloc[0]).date(),
                     )
                 )
         return out
@@ -160,8 +164,13 @@ class DataValidator:
             if mask.any():
                 first = df.loc[mask, "date"].iloc[0]
                 out.append(
-                    Issue("ERROR", code, f"{int(mask.sum())} bar(s) violate OHLC bounds",
-                          symbol, pd.Timestamp(first).date())
+                    Issue(
+                        "ERROR",
+                        code,
+                        f"{int(mask.sum())} bar(s) violate OHLC bounds",
+                        symbol,
+                        pd.Timestamp(first).date(),
+                    )
                 )
         return out
 
@@ -169,16 +178,26 @@ class DataValidator:
     def _check_volume(df: pd.DataFrame, symbol: str) -> list[Issue]:
         out = []
         if (df["volume"] < 0).any():
-            out.append(Issue("ERROR", "NEGATIVE_VOLUME",
-                             f"{int((df['volume'] < 0).sum())} bar(s)", symbol))
+            out.append(
+                Issue(
+                    "ERROR",
+                    "NEGATIVE_VOLUME",
+                    f"{int((df['volume'] < 0).sum())} bar(s)",
+                    symbol,
+                )
+            )
         zero = df["volume"] == 0
         if zero.any():
             # A zero-volume session on a liquid name means a halt or a data gap.
             # Suspicious, not fatal.
             out.append(
-                Issue("WARNING", "ZERO_VOLUME",
-                      f"{int(zero.sum())} zero-volume session(s), e.g. "
-                      f"{pd.Timestamp(df.loc[zero, 'date'].iloc[0]).date()}", symbol)
+                Issue(
+                    "WARNING",
+                    "ZERO_VOLUME",
+                    f"{int(zero.sum())} zero-volume session(s), e.g. "
+                    f"{pd.Timestamp(df.loc[zero, 'date'].iloc[0]).date()}",
+                    symbol,
+                )
             )
         return out
 
@@ -204,9 +223,11 @@ class DataValidator:
             sev = "ERROR" if abs(move) > JUMP_ERROR_THRESHOLD else "WARNING"
             out.append(
                 Issue(
-                    sev, "ABNORMAL_JUMP",
+                    sev,
+                    "ABNORMAL_JUMP",
                     f"{move:+.1%} move with no recorded corporate action",
-                    symbol, pd.Timestamp(df.loc[idx, "date"]).date(),
+                    symbol,
+                    pd.Timestamp(df.loc[idx, "date"]).date(),
                 )
             )
         return out
@@ -221,21 +242,30 @@ class DataValidator:
             # Under the weekday fallback, festival holidays look like gaps.
             sev = "INFO" if self.calendar.is_approximate else "WARNING"
             out.append(
-                Issue(sev, "MISSING_SESSIONS",
-                      f"{len(missing)} expected session(s) absent, e.g. "
-                      f"{missing[:5]}"
-                      + (" (approximate calendar; festival holidays expected here)"
-                         if self.calendar.is_approximate else ""),
-                      symbol)
+                Issue(
+                    sev,
+                    "MISSING_SESSIONS",
+                    f"{len(missing)} expected session(s) absent, e.g. "
+                    f"{missing[:5]}"
+                    + (
+                        " (approximate calendar; festival holidays expected here)"
+                        if self.calendar.is_approximate
+                        else ""
+                    ),
+                    symbol,
+                )
             )
 
         if not self.calendar.is_approximate:
             extra = self.calendar.unexpected_sessions(df["date"], start, end)
             if extra:
                 out.append(
-                    Issue("WARNING", "UNEXPECTED_SESSIONS",
-                          f"{len(extra)} bar(s) on non-trading days, e.g. {extra[:5]}",
-                          symbol)
+                    Issue(
+                        "WARNING",
+                        "UNEXPECTED_SESSIONS",
+                        f"{len(extra)} bar(s) on non-trading days, e.g. {extra[:5]}",
+                        symbol,
+                    )
                 )
         return out
 
@@ -262,16 +292,24 @@ class DataValidator:
                 continue
             if abs(move) > JUMP_WARN_THRESHOLD:
                 out.append(
-                    Issue("ERROR", "SPLIT_RECONCILIATION",
-                          f"{ratio}:1 split but split-adjusted series moved "
-                          f"{move:+.1%}; adjustment and action disagree",
-                          symbol, when)
+                    Issue(
+                        "ERROR",
+                        "SPLIT_RECONCILIATION",
+                        f"{ratio}:1 split but split-adjusted series moved "
+                        f"{move:+.1%}; adjustment and action disagree",
+                        symbol,
+                        when,
+                    )
                 )
             else:
                 out.append(
-                    Issue("INFO", "SPLIT_APPLIED",
-                          f"{ratio}:1 split reconciled (move {move:+.2%})",
-                          symbol, when)
+                    Issue(
+                        "INFO",
+                        "SPLIT_APPLIED",
+                        f"{ratio}:1 split reconciled (move {move:+.2%})",
+                        symbol,
+                        when,
+                    )
                 )
 
         divs = df[df["dividend"] > 0]
@@ -280,10 +318,14 @@ class DataValidator:
             extreme = divs[yields > 0.25]
             if not extreme.empty:
                 out.append(
-                    Issue("WARNING", "LARGE_DIVIDEND",
-                          f"{len(extreme)} dividend(s) exceeding 25% of price; "
-                          "likely a special dividend or a data error",
-                          symbol, pd.Timestamp(extreme["date"].iloc[0]).date())
+                    Issue(
+                        "WARNING",
+                        "LARGE_DIVIDEND",
+                        f"{len(extreme)} dividend(s) exceeding 25% of price; "
+                        "likely a special dividend or a data error",
+                        symbol,
+                        pd.Timestamp(extreme["date"].iloc[0]).date(),
+                    )
                 )
         return out
 
@@ -302,8 +344,11 @@ class DataValidator:
 
         if longest >= 4:
             return [
-                Issue("WARNING", "STALE_PRICES",
-                      f"{longest + 1} consecutive sessions with an identical close",
-                      symbol)
+                Issue(
+                    "WARNING",
+                    "STALE_PRICES",
+                    f"{longest + 1} consecutive sessions with an identical close",
+                    symbol,
+                )
             ]
         return []

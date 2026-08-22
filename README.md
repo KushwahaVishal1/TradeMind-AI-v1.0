@@ -105,9 +105,15 @@ Then daily:
 ```bash
 python main.py daily         # ingest → features → outcomes → predict → monitor
 ```
-
 Dashboard: `make dashboard`. Docker: `docker compose up`.
+```bash
+python -m streamlit run dashboard/app.py         # Terminal Dashboard
+docker compose up --build -d dashboard   # start dashboard at http://localhost:8501
+```
 
+```bash
+docker compose down                      # stop all services
+```
 **Expect warnings on the first ingest run.** Read them. That output is the
 data-quality section of your report, and "here are the 23 anomalies I found in
 free-tier data" is a stronger claim than silence.
@@ -117,8 +123,31 @@ free-tier data" is a stronger claim than silence.
 ## Testing
 
 ```bash
+### Windows PowerShell Commands
+
+# make protected (runs the 8 merge-blocking invariant tests)
+$env:PYTHONHASHSEED="42"; pytest -m protected -v
+
+# make test (runs the full test suite — 499 tests)
+$env:PYTHONHASHSEED="42"; pytest -q
+
+# make ci (runs ruff linting + protected invariant tests + full test suite)
+ruff check src tests dashboard; $env:PYTHONHASHSEED="42"; pytest -m protected; pytest -q
+```
+
+```bash
+# Docker execution:
+# Run the 8 merge-blocking invariant tests in Docker
+docker compose run --rm trademind pytest -m protected -v
+
+# Run full test suite in Docker
+docker compose run --rm trademind pytest -q
+```
+
+```bash
+#For Linux / macOS / Git Bash:
 make protected    # the 8 merge-blocking invariants — seconds
-make test         # full suite — 497 tests
+make test         # full suite — 499 tests
 make ci           # lint + protected + full, as CI runs it
 ```
 
@@ -148,7 +177,7 @@ src/trademind/
   reporting/             dashboard reasoning (tested separately from rendering)
 dashboard/               thin Streamlit shell
 scripts/                 forbidden-pattern gate, final evaluation
-tests/                   497 tests, 27 of them protected invariants
+tests/                   499 tests, 27 of them protected invariants
 ```
 
 82 modules, ~11,500 lines of source, ~5,900 lines of tests.

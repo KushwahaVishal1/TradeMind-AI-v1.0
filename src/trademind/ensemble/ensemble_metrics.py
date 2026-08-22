@@ -73,15 +73,17 @@ def reliability_table(
         n = int(mask.sum())
         if n == 0:
             continue
-        rows.append({
-            "bin": b,
-            "lower": float(edges[b]),
-            "upper": float(edges[b + 1]),
-            "count": n,
-            "mean_predicted": float(yp[mask].mean()),
-            "observed_frequency": float(yt[mask].mean()),
-            "gap": float(yp[mask].mean() - yt[mask].mean()),
-        })
+        rows.append(
+            {
+                "bin": b,
+                "lower": float(edges[b]),
+                "upper": float(edges[b + 1]),
+                "count": n,
+                "mean_predicted": float(yp[mask].mean()),
+                "observed_frequency": float(yt[mask].mean()),
+                "gap": float(yp[mask].mean() - yt[mask].mean()),
+            }
+        )
     return pd.DataFrame(rows)
 
 
@@ -175,8 +177,8 @@ def decompose_brier(y_true, y_prob, n_bins: int = 10) -> dict[str, float]:
     base_rate = float(yt.mean())
 
     reliability = float(
-        (table["count"] * (table["mean_predicted"] - table["observed_frequency"]) ** 2
-         ).sum() / n
+        (table["count"] * (table["mean_predicted"] - table["observed_frequency"]) ** 2).sum()
+        / n
     )
     resolution = float(
         (table["count"] * (table["observed_frequency"] - base_rate) ** 2).sum() / n

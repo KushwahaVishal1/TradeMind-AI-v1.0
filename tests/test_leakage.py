@@ -47,18 +47,21 @@ def synthetic_bars(n=800, symbol="TEST.NS", seed=42, splits=None, divs=None):
     close = 500.0 * np.exp(np.cumsum(rets))
 
     intraday = np.abs(rng.normal(0, 0.008, n))
-    df = pd.DataFrame({
-        "date": pd.bdate_range("2019-01-01", periods=n),
-        "symbol": symbol,
-        "open_split": close * (1 + rng.normal(0, 0.003, n)),
-        "high_split": close * (1 + intraday),
-        "low_split": close * (1 - intraday),
-        "close_split": close,
-        "volume": rng.integers(50_000, 500_000, n).astype("int64"),
-        "dividend": np.asarray(divs if divs is not None else [0.0] * n, dtype=float),
-        "split_ratio": np.asarray(splits if splits is not None else [1.0] * n,
-                                  dtype=float),
-    })
+    df = pd.DataFrame(
+        {
+            "date": pd.bdate_range("2019-01-01", periods=n),
+            "symbol": symbol,
+            "open_split": close * (1 + rng.normal(0, 0.003, n)),
+            "high_split": close * (1 + intraday),
+            "low_split": close * (1 - intraday),
+            "close_split": close,
+            "volume": rng.integers(50_000, 500_000, n).astype("int64"),
+            "dividend": np.asarray(divs if divs is not None else [0.0] * n, dtype=float),
+            "split_ratio": np.asarray(
+                splits if splits is not None else [1.0] * n, dtype=float
+            ),
+        }
+    )
     # Keep the bar internally consistent.
     df["high_split"] = df[["open_split", "high_split", "close_split"]].max(axis=1)
     df["low_split"] = df[["open_split", "low_split", "close_split"]].min(axis=1)
@@ -68,6 +71,7 @@ def synthetic_bars(n=800, symbol="TEST.NS", seed=42, splits=None, divs=None):
 # =======================================================================
 # THE leakage test
 # =======================================================================
+
 
 def test_no_feature_sees_the_future():
     """Mutate all prices after the cut; every feature at or before it must hold.
@@ -83,16 +87,22 @@ def test_no_feature_sees_the_future():
     # Violently perturb the future: a 50% drop plus fresh noise.
     mutated_bars = bars.copy()
     tail = slice(cut + 1, None)
-    for col in ("open_split", "high_split", "low_split", "close_split", "adj_close",
-                "open_raw", "high_raw", "low_raw", "close_raw"):
+    for col in (
+        "open_split",
+        "high_split",
+        "low_split",
+        "close_split",
+        "adj_close",
+        "open_raw",
+        "high_raw",
+        "low_raw",
+        "close_raw",
+    ):
         n_tail = len(mutated_bars.loc[tail, col])
         mutated_bars.loc[tail, col] = (
-            mutated_bars.loc[tail, col].to_numpy() * 0.5
-            * (1 + RNG.normal(0, 0.1, n_tail))
+            mutated_bars.loc[tail, col].to_numpy() * 0.5 * (1 + RNG.normal(0, 0.1, n_tail))
         )
-    mutated_bars.loc[tail, "volume"] = (
-        mutated_bars.loc[tail, "volume"].to_numpy() * 7
-    )
+    mutated_bars.loc[tail, "volume"] = mutated_bars.loc[tail, "volume"].to_numpy() * 7
 
     mutated = build_symbol_features(mutated_bars)
 
@@ -119,8 +129,14 @@ def test_leakage_holds_at_several_cut_points():
     for cut in (300, 450, 600):
         mutated_bars = bars.copy()
         tail = slice(cut + 1, None)
-        for col in ("open_split", "high_split", "low_split", "close_split",
-                    "adj_close", "adj_open"):
+        for col in (
+            "open_split",
+            "high_split",
+            "low_split",
+            "close_split",
+            "adj_close",
+            "adj_open",
+        ):
             if col in mutated_bars:
                 mutated_bars.loc[tail, col] *= 2.5
 
@@ -129,9 +145,7 @@ def test_leakage_holds_at_several_cut_points():
         for col in cols:
             a = original[col].iloc[: cut + 1].to_numpy(dtype=float)
             b = mutated[col].iloc[: cut + 1].to_numpy(dtype=float)
-            assert np.allclose(a, b, equal_nan=True, rtol=1e-9), (
-                f"{col} leaked at cut={cut}"
-            )
+            assert np.allclose(a, b, equal_nan=True, rtol=1e-9), f"{col} leaked at cut={cut}"
 
 
 def test_the_test_can_actually_fail():
@@ -151,8 +165,8 @@ def test_the_test_can_actually_fail():
 
     original = leaky(bars)
     mutated_bars = bars.copy()
-    mutated_bars.loc[cut + 1:, "adj_close"] *= 3.0
-    mutated_bars.loc[cut + 1:, "close_split"] *= 3.0
+    mutated_bars.loc[cut + 1 :, "adj_close"] *= 3.0
+    mutated_bars.loc[cut + 1 :, "close_split"] *= 3.0
     mutated = leaky(mutated_bars)
 
     a = original["LEAKY_vol_rank"].iloc[: cut + 1].to_numpy()
@@ -166,6 +180,7 @@ def test_the_test_can_actually_fail():
 # =======================================================================
 # Expanding vs full-sample normalisation
 # =======================================================================
+
 
 def test_expanding_percentile_is_causal():
     s = pd.Series(RNG.normal(size=600))
@@ -220,12 +235,15 @@ def test_cumulative_max_is_causal():
 # Cross-sectional safety
 # =======================================================================
 
+
 def test_cross_sectional_ranks_within_date_only():
-    panel = pd.DataFrame({
-        "date": pd.to_datetime(["2023-01-02"] * 3 + ["2023-01-03"] * 3),
-        "symbol": ["A", "B", "C"] * 2,
-        "return_5d": [0.01, 0.02, 0.03, 0.50, 0.60, 0.70],
-    })
+    panel = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2023-01-02"] * 3 + ["2023-01-03"] * 3),
+            "symbol": ["A", "B", "C"] * 2,
+            "return_5d": [0.01, 0.02, 0.03, 0.50, 0.60, 0.70],
+        }
+    )
     ranked = regime.add_cross_sectional(panel, ["return_5d"])
 
     day1 = ranked[ranked["date"] == "2023-01-02"]["xs_rank_return_5d"].tolist()
@@ -236,16 +254,20 @@ def test_cross_sectional_ranks_within_date_only():
 
 
 def test_cross_sectional_unaffected_by_future_dates():
-    base = pd.DataFrame({
-        "date": pd.to_datetime(["2023-01-02"] * 3),
-        "symbol": ["A", "B", "C"],
-        "return_5d": [0.01, 0.02, 0.03],
-    })
-    future = pd.DataFrame({
-        "date": pd.to_datetime(["2023-06-01"] * 3),
-        "symbol": ["A", "B", "C"],
-        "return_5d": [9.0, 8.0, 7.0],
-    })
+    base = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2023-01-02"] * 3),
+            "symbol": ["A", "B", "C"],
+            "return_5d": [0.01, 0.02, 0.03],
+        }
+    )
+    future = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2023-06-01"] * 3),
+            "symbol": ["A", "B", "C"],
+            "return_5d": [9.0, 8.0, 7.0],
+        }
+    )
 
     alone = regime.add_cross_sectional(base, ["return_5d"])
     together = regime.add_cross_sectional(
@@ -261,6 +283,7 @@ def test_cross_sectional_unaffected_by_future_dates():
 # =======================================================================
 # Labels
 # =======================================================================
+
 
 def test_tradeable_label_is_open_to_open_after_the_signal():
     bars = synthetic_bars(n=50)
@@ -299,9 +322,7 @@ def test_research_label_does_use_the_signal_day_close():
     mutated_bars.loc[10, "close_split"] *= 1.5
     mutated = add_labels(mutated_bars, horizon=1)
 
-    assert mutated[RESEARCH_LABEL].iloc[10] != pytest.approx(
-        original[RESEARCH_LABEL].iloc[10]
-    )
+    assert mutated[RESEARCH_LABEL].iloc[10] != pytest.approx(original[RESEARCH_LABEL].iloc[10])
 
 
 def test_last_rows_are_unlabelled_not_dropped():
@@ -332,6 +353,7 @@ def test_zero_horizon_rejected():
 # =======================================================================
 # Pipeline hygiene
 # =======================================================================
+
 
 def test_no_label_column_is_a_model_input():
     """A label leaking into the feature matrix is instant, total leakage."""
@@ -408,10 +430,12 @@ def test_unsorted_bars_rejected():
 
 
 def test_multi_symbol_panel_is_date_sorted():
-    panel = build_panel({
-        "A.NS": synthetic_bars(n=600, symbol="A.NS", seed=1),
-        "B.NS": synthetic_bars(n=600, symbol="B.NS", seed=2),
-    })
+    panel = build_panel(
+        {
+            "A.NS": synthetic_bars(n=600, symbol="A.NS", seed=1),
+            "B.NS": synthetic_bars(n=600, symbol="B.NS", seed=2),
+        }
+    )
     assert panel["date"].is_monotonic_increasing
     assert panel["symbol"].nunique() == 2
     assert any(c.startswith("xs_rank_") for c in panel.columns)

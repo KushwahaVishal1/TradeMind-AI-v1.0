@@ -36,12 +36,12 @@ import pandas as pd
 MIN_EXPANDING_OBS = 252
 
 
-def expanding_percentile(series: pd.Series,
-                         min_periods: int = MIN_EXPANDING_OBS) -> pd.Series:
+def expanding_percentile(series: pd.Series, min_periods: int = MIN_EXPANDING_OBS) -> pd.Series:
     """Rank each observation against history up to and including itself.
 
     Returns a value in [0, 1]. The causal counterpart of ``rank(pct=True)``.
     """
+
     def _rank(window: np.ndarray) -> float:
         current = window[-1]
         if np.isnan(current):
@@ -54,8 +54,7 @@ def expanding_percentile(series: pd.Series,
     return series.expanding(min_periods=min_periods).apply(_rank, raw=True)
 
 
-def expanding_zscore(series: pd.Series,
-                     min_periods: int = MIN_EXPANDING_OBS) -> pd.Series:
+def expanding_zscore(series: pd.Series, min_periods: int = MIN_EXPANDING_OBS) -> pd.Series:
     """Z-score against expanding history. Causal alternative to a full-sample one."""
     mean = series.expanding(min_periods=min_periods).mean()
     std = series.expanding(min_periods=min_periods).std(ddof=1)
@@ -87,6 +86,7 @@ def drawdown_from_peak(close: pd.Series) -> pd.Series:
 
 def days_since_high(close: pd.Series, window: int = 252) -> pd.Series:
     """Sessions since the highest close within a trailing window."""
+
     def _since(w: np.ndarray) -> float:
         return float(len(w) - 1 - int(np.nanargmax(w)))
 

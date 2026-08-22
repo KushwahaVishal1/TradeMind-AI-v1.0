@@ -40,19 +40,24 @@ def panel(n_days=1200, symbols=("A", "B", "C"), seed=0):
     dates = pd.bdate_range("2018-01-01", periods=n_days)
     rows = []
     for s in symbols:
-        rows.append(pd.DataFrame({
-            "date": dates,
-            "symbol": s,
-            "f1": rng.normal(size=n_days),
-            "f2": rng.normal(size=n_days),
-            "y": rng.normal(0, 0.015, size=n_days),
-        }))
+        rows.append(
+            pd.DataFrame(
+                {
+                    "date": dates,
+                    "symbol": s,
+                    "f1": rng.normal(size=n_days),
+                    "f2": rng.normal(size=n_days),
+                    "y": rng.normal(0, 0.015, size=n_days),
+                }
+            )
+        )
     return pd.concat(rows).sort_values(["date", "symbol"]).reset_index(drop=True)
 
 
 # =====================================================================
 # Purge sizing
 # =====================================================================
+
 
 def test_required_purge_includes_the_execution_offset():
     """horizon + 1, not horizon. The extra day is the decision-to-fill gap."""
@@ -79,6 +84,7 @@ def test_gap_config_rejects_negative_embargo():
 # THE demonstration
 # =====================================================================
 
+
 def test_unpurged_split_leaves_leaking_rows_and_purge_removes_them():
     """Count training rows whose label window reaches into validation.
 
@@ -98,9 +104,11 @@ def test_unpurged_split_leaves_leaking_rows_and_purge_removes_them():
 
     def count_leaking(purge: int, execution_offset: int) -> int:
         splitter = PurgedWalkForwardSplit(
-            n_splits=3, test_sessions=100,
-            gaps=GapConfig(horizon=horizon, purge=purge, embargo=0,
-                           execution_offset=execution_offset),
+            n_splits=3,
+            test_sessions=100,
+            gaps=GapConfig(
+                horizon=horizon, purge=purge, embargo=0, execution_offset=execution_offset
+            ),
             min_train_sessions=252,
         )
         total = 0
@@ -108,9 +116,7 @@ def test_unpurged_split_leaves_leaking_rows_and_purge_removes_them():
             val_start_pos = sessions.searchsorted(fold.val_start)
             train_dates = df["date"].iloc[fold.train_idx]
             # Label of t occupies sessions t+1 .. t+1+horizon.
-            label_end_pos = (
-                sessions.searchsorted(train_dates.to_numpy()) + 1 + horizon
-            )
+            label_end_pos = sessions.searchsorted(train_dates.to_numpy()) + 1 + horizon
             total += int((label_end_pos >= val_start_pos).sum())
         return total
 
@@ -133,11 +139,15 @@ def test_walk_forward_reports_aggregate_and_spread():
         return LinearRegression().fit(X, y)
 
     res = walk_forward(
-        df, ["f1"], "y", fit,
+        df,
+        ["f1"],
+        "y",
+        fit,
         lambda m, X: m.predict(X),
         lambda yt, yp: {"corr": float(np.corrcoef(yt, yp)[0, 1])},
         splitter=PurgedWalkForwardSplit(
-            n_splits=3, test_sessions=100,
+            n_splits=3,
+            test_sessions=100,
             gaps=GapConfig(horizon=1, purge=2, embargo=0),
             min_train_sessions=200,
         ),
@@ -159,21 +169,21 @@ def test_purged_folds_have_a_real_gap():
     for fold in splitter.split(df):
         train_end = df["date"].iloc[fold.train_idx].max()
         val_start = df["date"].iloc[fold.val_idx].min()
-        gap = (
-            sessions.searchsorted(val_start) - sessions.searchsorted(train_end) - 1
-        )
+        gap = sessions.searchsorted(val_start) - sessions.searchsorted(train_end) - 1
         assert gap >= gaps.purge, f"fold {fold.index} gap {gap} < purge {gaps.purge}"
 
 
 def test_assert_fold_is_clean_catches_a_bad_fold():
     df = panel(n_days=800)
-    splitter = PurgedWalkForwardSplit(n_splits=2, test_sessions=100,
-                                      gaps=GapConfig(purge=5), min_train_sessions=252)
+    splitter = PurgedWalkForwardSplit(
+        n_splits=2, test_sessions=100, gaps=GapConfig(purge=5), min_train_sessions=252
+    )
     fold = next(iter(splitter.split(df)))
 
     # Sabotage: extend training into the validation window.
-    bad = fold.__class__(**{**fold.__dict__,
-                            "train_idx": np.r_[fold.train_idx, fold.val_idx[:5]]})
+    bad = fold.__class__(
+        **{**fold.__dict__, "train_idx": np.r_[fold.train_idx, fold.val_idx[:5]]}
+    )
 
     with pytest.raises(ValidationConfigError):
         assert_fold_is_clean(bad, df, GapConfig(purge=5))
@@ -183,11 +193,13 @@ def test_assert_fold_is_clean_catches_a_bad_fold():
 # Panel awareness
 # =====================================================================
 
+
 def test_split_assigns_whole_sessions_not_rows():
     """A date must never straddle the boundary — that is same-day leakage."""
     df = panel(n_days=900, symbols=("A", "B", "C", "D"))
-    splitter = PurgedWalkForwardSplit(n_splits=3, test_sessions=100,
-                                      gaps=GapConfig(purge=3), min_train_sessions=252)
+    splitter = PurgedWalkForwardSplit(
+        n_splits=3, test_sessions=100, gaps=GapConfig(purge=3), min_train_sessions=252
+    )
 
     for fold in splitter.split(df):
         train_dates = set(df["date"].iloc[fold.train_idx])
@@ -198,8 +210,9 @@ def test_split_assigns_whole_sessions_not_rows():
 def test_all_symbols_present_on_both_sides():
     """Whole-session assignment keeps the cross-section intact."""
     df = panel(n_days=900, symbols=("A", "B", "C"))
-    splitter = PurgedWalkForwardSplit(n_splits=2, test_sessions=100,
-                                      gaps=GapConfig(purge=3), min_train_sessions=252)
+    splitter = PurgedWalkForwardSplit(
+        n_splits=2, test_sessions=100, gaps=GapConfig(purge=3), min_train_sessions=252
+    )
 
     for fold in splitter.split(df):
         assert df["symbol"].iloc[fold.train_idx].nunique() == 3
@@ -210,10 +223,14 @@ def test_all_symbols_present_on_both_sides():
 # Walk-forward mechanics
 # =====================================================================
 
+
 def test_folds_move_forward_in_time():
     df = panel(n_days=1200)
-    folds = list(PurgedWalkForwardSplit(n_splits=4, test_sessions=100,
-                                        gaps=GapConfig(purge=3)).split(df))
+    folds = list(
+        PurgedWalkForwardSplit(n_splits=4, test_sessions=100, gaps=GapConfig(purge=3)).split(
+            df
+        )
+    )
 
     for a, b in zip(folds, folds[1:]):
         assert b.val_start > a.val_start
@@ -222,18 +239,25 @@ def test_folds_move_forward_in_time():
 
 def test_expanding_window_grows():
     df = panel(n_days=1200)
-    folds = list(PurgedWalkForwardSplit(n_splits=4, test_sessions=100,
-                                        gaps=GapConfig(purge=3)).split(df))
+    folds = list(
+        PurgedWalkForwardSplit(n_splits=4, test_sessions=100, gaps=GapConfig(purge=3)).split(
+            df
+        )
+    )
     sizes = [len(f.train_idx) for f in folds]
     assert sizes == sorted(sizes)
 
 
 def test_rolling_window_stays_bounded():
     df = panel(n_days=1400)
-    folds = list(PurgedWalkForwardSplit(
-        n_splits=3, test_sessions=100, gaps=GapConfig(purge=3),
-        train_sessions=300,
-    ).split(df))
+    folds = list(
+        PurgedWalkForwardSplit(
+            n_splits=3,
+            test_sessions=100,
+            gaps=GapConfig(purge=3),
+            train_sessions=300,
+        ).split(df)
+    )
 
     n_symbols = df["symbol"].nunique()
     for f in folds:
@@ -242,8 +266,9 @@ def test_rolling_window_stays_bounded():
 
 def test_validation_never_precedes_training():
     df = panel(n_days=1000)
-    for f in PurgedWalkForwardSplit(n_splits=3, test_sessions=100,
-                                    gaps=GapConfig(purge=3)).split(df):
+    for f in PurgedWalkForwardSplit(
+        n_splits=3, test_sessions=100, gaps=GapConfig(purge=3)
+    ).split(df):
         assert f.train_end < f.val_start
 
 
@@ -260,8 +285,9 @@ def test_missing_date_column_is_an_explicit_error():
 
 def test_summary_has_one_row_per_fold():
     df = panel(n_days=1200)
-    s = PurgedWalkForwardSplit(n_splits=4, test_sessions=100,
-                               gaps=GapConfig(purge=3)).summary(df)
+    s = PurgedWalkForwardSplit(n_splits=4, test_sessions=100, gaps=GapConfig(purge=3)).summary(
+        df
+    )
     assert len(s) == 4
     assert "n_purged" in s.columns
 
@@ -269,6 +295,7 @@ def test_summary_has_one_row_per_fold():
 # =====================================================================
 # Final-test lock
 # =====================================================================
+
 
 def test_development_split_excludes_the_locked_window():
     df = panel(n_days=1200)
@@ -362,6 +389,7 @@ def test_unlock_is_recorded():
 # Runner
 # =====================================================================
 
+
 def _linear_harness():
     from sklearn.linear_model import Ridge
 
@@ -382,9 +410,15 @@ def test_walk_forward_produces_one_result_per_fold():
     fit, predict, score = _linear_harness()
 
     res = walk_forward(
-        df, ["f1", "f2"], "y", fit, predict, score,
-        splitter=PurgedWalkForwardSplit(n_splits=3, test_sessions=100,
-                                        gaps=GapConfig(purge=3)),
+        df,
+        ["f1", "f2"],
+        "y",
+        fit,
+        predict,
+        score,
+        splitter=PurgedWalkForwardSplit(
+            n_splits=3, test_sessions=100, gaps=GapConfig(purge=3)
+        ),
     )
     assert len(res.folds) == 3
     assert "mae_mean" in res.aggregate()
@@ -397,9 +431,15 @@ def test_oof_predictions_cover_each_row_once():
     fit, predict, score = _linear_harness()
 
     res = walk_forward(
-        df, ["f1", "f2"], "y", fit, predict, score,
-        splitter=PurgedWalkForwardSplit(n_splits=3, test_sessions=100,
-                                        gaps=GapConfig(purge=3)),
+        df,
+        ["f1", "f2"],
+        "y",
+        fit,
+        predict,
+        score,
+        splitter=PurgedWalkForwardSplit(
+            n_splits=3, test_sessions=100, gaps=GapConfig(purge=3)
+        ),
     )
     oof = res.oof_predictions
     assert not oof.duplicated(subset=["date", "symbol"]).any()
@@ -418,9 +458,15 @@ def test_render_mentions_every_fold():
     df = panel(n_days=1200)
     fit, predict, score = _linear_harness()
     res = walk_forward(
-        df, ["f1", "f2"], "y", fit, predict, score,
-        splitter=PurgedWalkForwardSplit(n_splits=3, test_sessions=100,
-                                        gaps=GapConfig(purge=3)),
+        df,
+        ["f1", "f2"],
+        "y",
+        fit,
+        predict,
+        score,
+        splitter=PurgedWalkForwardSplit(
+            n_splits=3, test_sessions=100, gaps=GapConfig(purge=3)
+        ),
     )
     text = res.render()
     assert text.count("fold ") >= 3

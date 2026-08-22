@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import date
-
 from ..ingestion import MarketDataIngestion, YFinanceProvider
 from ..storage.lake import ParquetLake
 from .base import Job, JobResult, JobStatus, PipelineContext
@@ -37,15 +35,18 @@ class IngestionJob(Job):
 
         if not summary.succeeded:
             return JobResult(
-                self.name, JobStatus.FAILED,
-                "no symbol ingested successfully", records=0,
+                self.name,
+                JobStatus.FAILED,
+                "no symbol ingested successfully",
+                records=0,
             )
         if summary.failed:
             # Partial is not failure: the pipeline can produce signals for the
             # symbols that worked, and forcing an all-or-nothing rule would let
             # one delisted ticker stop the whole system.
             return JobResult(
-                self.name, JobStatus.PARTIAL,
+                self.name,
+                JobStatus.PARTIAL,
                 f"{len(summary.failed)} of {len(summary.results)} symbols failed",
                 records=n_rows,
                 details={"failed": [r.symbol for r in summary.failed]},
@@ -72,7 +73,8 @@ class FeatureJob(Job):
         frames = {k: v for k, v in frames.items() if v is not None and not v.empty}
 
         panel = build_panel(
-            frames, horizon=cfg.get("features.target_horizon_days"),
+            frames,
+            horizon=cfg.get("features.target_horizon_days"),
         )
         if panel.empty:
             return JobResult(self.name, JobStatus.FAILED, "empty feature panel")
@@ -87,7 +89,5 @@ class FeatureJob(Job):
         worst = coverage_report(panel).iloc[0]
         message = ""
         if worst["missing_rate"] > 0.10:
-            message = (
-                f"{worst['feature']} is {worst['missing_rate']:.0%} missing"
-            )
+            message = f"{worst['feature']} is {worst['missing_rate']:.0%} missing"
         return JobResult(self.name, JobStatus.SUCCESS, message, records=len(panel))

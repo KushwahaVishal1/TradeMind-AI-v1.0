@@ -31,12 +31,13 @@ def parkinson_vol(high: pd.Series, low: pd.Series, window: int) -> pd.Series:
     """
     ratio = np.log(high / low.replace(0.0, np.nan))
     factor = 1.0 / (4.0 * np.log(2.0))
-    var = (ratio ** 2).rolling(window, min_periods=window).mean() * factor
+    var = (ratio**2).rolling(window, min_periods=window).mean() * factor
     return np.sqrt(var * TRADING_DAYS)
 
 
-def garman_klass_vol(open_: pd.Series, high: pd.Series, low: pd.Series,
-                     close: pd.Series, window: int) -> pd.Series:
+def garman_klass_vol(
+    open_: pd.Series, high: pd.Series, low: pd.Series, close: pd.Series, window: int
+) -> pd.Series:
     """Garman-Klass estimator using the full OHLC bar."""
     hl = np.log(high / low.replace(0.0, np.nan)) ** 2
     co = np.log(close / open_.replace(0.0, np.nan)) ** 2
@@ -63,14 +64,10 @@ def build(df: pd.DataFrame) -> pd.DataFrame:
 
     # Volatility term structure. Above 1 means short-term vol is elevated
     # relative to the longer baseline -- a regime change in progress.
-    out["vol_ratio_10_60"] = (
-        out["volatility_10"] / out["volatility_60"].replace(0.0, np.nan)
-    )
+    out["vol_ratio_10_60"] = out["volatility_10"] / out["volatility_60"].replace(0.0, np.nan)
 
     # Downside deviation: only negative returns contribute.
     downside = ret.where(ret < 0, 0.0)
-    out["downside_vol_20"] = (
-        downside.rolling(20, min_periods=20).std(ddof=1) * np.sqrt(252)
-    )
+    out["downside_vol_20"] = downside.rolling(20, min_periods=20).std(ddof=1) * np.sqrt(252)
 
     return out

@@ -23,8 +23,8 @@ whatever its AUC looks like.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Callable, Sequence
 
 import numpy as np
 import pandas as pd
@@ -39,6 +39,7 @@ log = logging.getLogger(__name__)
 # =====================================================================
 # Baselines
 # =====================================================================
+
 
 class MajorityBaseline:
     """Predicts the training base rate for every row.
@@ -110,6 +111,7 @@ class MomentumBaseline:
 # OOF generation
 # =====================================================================
 
+
 @dataclass
 class OOFResult:
     """Out-of-fold predictions plus per-fold and pooled metrics."""
@@ -148,8 +150,7 @@ class OOFResult:
         key = "roc_auc" if self.task == "direction" else "information_coefficient"
         if f"{key}_mean" in agg:
             lines.append(
-                f"  per-fold {key}: {agg[f'{key}_mean']:.4f} "
-                f"+/- {agg[f'{key}_std']:.4f}"
+                f"  per-fold {key}: {agg[f'{key}_mean']:.4f} +/- {agg[f'{key}_std']:.4f}"
             )
         for w in flag_suspicious(self.pooled_metrics, kind):
             lines.append(f"  WARNING: {w}")
@@ -188,7 +189,7 @@ def generate_oof(
         train = labelled.iloc[fold.train_idx]
         val = labelled.iloc[fold.val_idx]
 
-        model = model_factory()          # fresh instance every fold
+        model = model_factory()  # fresh instance every fold
         if resolved_name is None:
             resolved_name = getattr(getattr(model, "spec", None), "name", "model")
         model.fit(train[feature_cols], train[label_col], train.get("date"))
@@ -197,16 +198,23 @@ def generate_oof(
         metrics = metric_fn(val[label_col], preds)
         rows.append({**fold.describe(), **metrics})
 
-        frames.append(pd.DataFrame({
-            "date": val["date"].to_numpy(),
-            "symbol": val["symbol"].to_numpy() if "symbol" in val else None,
-            "fold": fold.index,
-            "y_true": val[label_col].to_numpy(),
-            "y_pred": np.asarray(preds).ravel(),
-        }))
+        frames.append(
+            pd.DataFrame(
+                {
+                    "date": val["date"].to_numpy(),
+                    "symbol": val["symbol"].to_numpy() if "symbol" in val else None,
+                    "fold": fold.index,
+                    "y_true": val[label_col].to_numpy(),
+                    "y_pred": np.asarray(preds).ravel(),
+                }
+            )
+        )
 
-        log.info("  fold %d: %s", fold.index,
-                 summarise(metrics, "classification" if task == "direction" else "regression"))
+        log.info(
+            "  fold %d: %s",
+            fold.index,
+            summarise(metrics, "classification" if task == "direction" else "regression"),
+        )
 
     result = OOFResult(
         predictions=pd.concat(frames, ignore_index=True),
@@ -230,24 +238,30 @@ def compare_models(results: Sequence[OOFResult]) -> pd.DataFrame:
         pooled = r.pooled_metrics
         agg = r.aggregate()
         key = "roc_auc" if r.task == "direction" else "information_coefficient"
-        rows.append({
-            "model": r.model_name,
-            "task": r.task,
-            key: pooled.get(key, float("nan")),
-            f"{key}_fold_std": agg.get(f"{key}_std", float("nan")),
-            **({
-                "accuracy": pooled.get("accuracy"),
-                "majority": pooled.get("majority_accuracy"),
-                "lift": pooled.get("skill_vs_majority"),
-                "brier": pooled.get("brier"),
-                "bss": pooled.get("brier_skill_score"),
-            } if r.task == "direction" else {
-                "dir_acc": pooled.get("directional_accuracy"),
-                "mae": pooled.get("mae"),
-                "mae_baseline": pooled.get("mae_baseline"),
-                "r2": pooled.get("r2"),
-            }),
-        })
+        rows.append(
+            {
+                "model": r.model_name,
+                "task": r.task,
+                key: pooled.get(key, float("nan")),
+                f"{key}_fold_std": agg.get(f"{key}_std", float("nan")),
+                **(
+                    {
+                        "accuracy": pooled.get("accuracy"),
+                        "majority": pooled.get("majority_accuracy"),
+                        "lift": pooled.get("skill_vs_majority"),
+                        "brier": pooled.get("brier"),
+                        "bss": pooled.get("brier_skill_score"),
+                    }
+                    if r.task == "direction"
+                    else {
+                        "dir_acc": pooled.get("directional_accuracy"),
+                        "mae": pooled.get("mae"),
+                        "mae_baseline": pooled.get("mae_baseline"),
+                        "r2": pooled.get("r2"),
+                    }
+                ),
+            }
+        )
     df = pd.DataFrame(rows)
     sort_key = "roc_auc" if "roc_auc" in df.columns else "information_coefficient"
     return df.sort_values(sort_key, ascending=False).reset_index(drop=True)

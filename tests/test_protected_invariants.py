@@ -33,16 +33,28 @@ pytestmark = pytest.mark.protected
 # 1. Final-test immutability
 # =====================================================================
 
+
 def _panel(n_days=800, symbols=("A", "B"), seed=0):
     rng = np.random.default_rng(seed)
     dates = pd.bdate_range("2019-01-01", periods=n_days)
-    return pd.concat([
-        pd.DataFrame({
-            "date": dates, "symbol": s,
-            "f1": rng.normal(size=n_days), "f2": rng.normal(size=n_days),
-            "y": rng.normal(0, 0.015, n_days),
-        }) for s in symbols
-    ]).sort_values(["date", "symbol"]).reset_index(drop=True)
+    return (
+        pd.concat(
+            [
+                pd.DataFrame(
+                    {
+                        "date": dates,
+                        "symbol": s,
+                        "f1": rng.normal(size=n_days),
+                        "f2": rng.normal(size=n_days),
+                        "y": rng.normal(0, 0.015, n_days),
+                    }
+                )
+                for s in symbols
+            ]
+        )
+        .sort_values(["date", "symbol"])
+        .reset_index(drop=True)
+    )
 
 
 def test_invariant_1_final_test_is_never_reachable_for_fitting():
@@ -78,22 +90,26 @@ def test_mutation_1b_locked_rows_reaching_a_fit_are_detected():
 # 2. No future information in features
 # =====================================================================
 
+
 def _bars(n=500, seed=3):
     from trademind.ingestion.corporate_actions import apply_corporate_actions
 
     rng = np.random.default_rng(seed)
     close = 500.0 * np.exp(np.cumsum(rng.normal(0.0004, 0.015, n)))
     intraday = np.abs(rng.normal(0, 0.008, n))
-    df = pd.DataFrame({
-        "date": pd.bdate_range("2020-01-01", periods=n),
-        "symbol": "T.NS",
-        "open_split": close * (1 + rng.normal(0, 0.003, n)),
-        "high_split": close * (1 + intraday),
-        "low_split": close * (1 - intraday),
-        "close_split": close,
-        "volume": rng.integers(50_000, 500_000, n).astype("int64"),
-        "dividend": np.zeros(n), "split_ratio": np.ones(n),
-    })
+    df = pd.DataFrame(
+        {
+            "date": pd.bdate_range("2020-01-01", periods=n),
+            "symbol": "T.NS",
+            "open_split": close * (1 + rng.normal(0, 0.003, n)),
+            "high_split": close * (1 + intraday),
+            "low_split": close * (1 - intraday),
+            "close_split": close,
+            "volume": rng.integers(50_000, 500_000, n).astype("int64"),
+            "dividend": np.zeros(n),
+            "split_ratio": np.ones(n),
+        }
+    )
     df["high_split"] = df[["open_split", "high_split", "close_split"]].max(axis=1)
     df["low_split"] = df[["open_split", "low_split", "close_split"]].min(axis=1)
     return apply_corporate_actions(df)
@@ -107,17 +123,28 @@ def test_invariant_2_features_do_not_change_when_the_future_changes():
     original = build_symbol_features(bars)
 
     mutated_bars = bars.copy()
-    for col in ("open_split", "high_split", "low_split", "close_split",
-                "adj_close", "open_raw", "high_raw", "low_raw", "close_raw"):
-        mutated_bars.loc[cut + 1:, col] *= 0.5
+    for col in (
+        "open_split",
+        "high_split",
+        "low_split",
+        "close_split",
+        "adj_close",
+        "open_raw",
+        "high_raw",
+        "low_raw",
+        "close_raw",
+    ):
+        mutated_bars.loc[cut + 1 :, col] *= 0.5
     mutated = build_symbol_features(mutated_bars)
 
     offenders = [
-        col for col in feature_columns(original)
+        col
+        for col in feature_columns(original)
         if not np.allclose(
             original[col].iloc[: cut + 1].to_numpy(dtype=float),
             mutated[col].iloc[: cut + 1].to_numpy(dtype=float),
-            equal_nan=True, rtol=1e-9,
+            equal_nan=True,
+            rtol=1e-9,
         )
     ]
     assert not offenders, f"look-ahead in: {offenders}"
@@ -132,16 +159,17 @@ def test_mutation_2_a_leaky_feature_is_caught():
 
     def leaky(df):
         out = build_symbol_features(df)
-        out["LEAKY"] = out["volatility_20"].rank(pct=True)   # sees the future
+        out["LEAKY"] = out["volatility_20"].rank(pct=True)  # sees the future
         return out
 
     original = leaky(bars)
     mutated_bars = bars.copy()
-    mutated_bars.loc[cut + 1:, ["adj_close", "close_split"]] *= 3.0
+    mutated_bars.loc[cut + 1 :, ["adj_close", "close_split"]] *= 3.0
     mutated = leaky(mutated_bars)
 
     assert not np.allclose(
-        original["LEAKY"].iloc[: cut + 1], mutated["LEAKY"].iloc[: cut + 1],
+        original["LEAKY"].iloc[: cut + 1],
+        mutated["LEAKY"].iloc[: cut + 1],
         equal_nan=True,
     ), "the leakage detector failed on a known-leaky feature"
 
@@ -150,15 +178,20 @@ def test_mutation_2_a_leaky_feature_is_caught():
 # 3. No same-day execution
 # =====================================================================
 
+
 def test_invariant_3_storage_rejects_same_day_execution():
     from trademind.storage import Prediction
 
     with pytest.raises(ValueError, match="look-ahead"):
         Prediction(
-            symbol="A", prediction_date="2023-06-15",
+            symbol="A",
+            prediction_date="2023-06-15",
             execution_date="2023-06-15",
-            model_version="m", feature_version="f", decision_version="d",
-            threshold_version="t", signal="BUY",
+            model_version="m",
+            feature_version="f",
+            decision_version="d",
+            threshold_version="t",
+            signal="BUY",
         )
 
 
@@ -166,11 +199,11 @@ def test_invariant_3b_backtester_rejects_same_day_execution():
     from trademind.backtesting import ExecutionError, Order, Portfolio, execute_orders
     from trademind.backtesting.config import BacktestConfig
 
-    order = Order("A", decision_date=date(2023, 6, 15), target_weight=0.1,
-                  signal="BUY")
+    order = Order("A", decision_date=date(2023, 6, 15), target_weight=0.1, signal="BUY")
     with pytest.raises(ExecutionError, match="look-ahead"):
-        execute_orders([order], Portfolio(1_000_000.0), date(2023, 6, 15),
-                       {"A": 1000.0}, BacktestConfig())
+        execute_orders(
+            [order], Portfolio(1_000_000.0), date(2023, 6, 15), {"A": 1000.0}, BacktestConfig()
+        )
 
 
 def test_mutation_3_a_model_predicting_its_own_training_window_is_refused():
@@ -184,6 +217,7 @@ def test_mutation_3_a_model_predicting_its_own_training_window_is_refused():
 # =====================================================================
 # 4. Corporate-action split continuity
 # =====================================================================
+
 
 def test_invariant_4_a_split_preserves_wealth():
     """100 x Rs.1,000 = 200 x Rs.500."""
@@ -217,18 +251,20 @@ def test_mutation_4_a_wrong_split_transform_is_detected(monkeypatch):
     shares x basis before and after, and the transform preserves that product
     for any starting values. So the meaningful mutation is a bad transform.
     """
+    import trademind.backtesting.portfolio as portfolio_module
     from trademind.backtesting import Portfolio, compute_costs
     from trademind.backtesting.config import CostConfig
     from trademind.backtesting.portfolio import ReconciliationError
-    import trademind.backtesting.portfolio as portfolio_module
 
     portfolio = Portfolio(1_000_000.0)
-    portfolio.buy("A", 100, 1000.0,
-                  compute_costs(100_000.0, CostConfig(0, 0, 0)), date(2023, 6, 15))
+    portfolio.buy(
+        "A", 100, 1000.0, compute_costs(100_000.0, CostConfig(0, 0, 0)), date(2023, 6, 15)
+    )
 
     # A plausible bug: share count multiplied, cost basis left alone.
     monkeypatch.setattr(
-        portfolio_module, "adjust_position_for_split",
+        portfolio_module,
+        "adjust_position_for_split",
         lambda shares, basis, ratio: (shares * ratio, basis),
     )
 
@@ -252,29 +288,32 @@ def test_invariant_4c_reconciliation_cannot_detect_a_missing_split():
     from trademind.backtesting.portfolio import RECONCILE_TOLERANCE
 
     portfolio = Portfolio(1_000_000.0)
-    portfolio.buy("A", 100, 1000.0,
-                  compute_costs(100_000.0, CostConfig(0, 0, 0)), date(2023, 6, 15))
+    portfolio.buy(
+        "A", 100, 1000.0, compute_costs(100_000.0, CostConfig(0, 0, 0)), date(2023, 6, 15)
+    )
 
     # Price halves as if a 2:1 split occurred, but no split was applied.
-    assert abs(portfolio.reconcile({"A": 500.0}, date(2023, 6, 16))) \
-        < RECONCILE_TOLERANCE
+    assert abs(portfolio.reconcile({"A": 500.0}, date(2023, 6, 16))) < RECONCILE_TOLERANCE
 
     # The upstream guard is what catches it.
     from trademind.ingestion.data_validator import JUMP_WARN_THRESHOLD
-    assert 0.5 > JUMP_WARN_THRESHOLD
+
+    assert JUMP_WARN_THRESHOLD < 0.5
 
 
 # =====================================================================
 # 5. Portfolio conservation and P&L reconciliation
 # =====================================================================
 
+
 def _funded_portfolio():
     from trademind.backtesting import Portfolio, compute_costs
     from trademind.backtesting.config import CostConfig
 
     portfolio = Portfolio(1_000_000.0)
-    portfolio.buy("A", 100, 1000.0,
-                  compute_costs(100_000.0, CostConfig(3, 5, 5)), date(2023, 6, 15))
+    portfolio.buy(
+        "A", 100, 1000.0, compute_costs(100_000.0, CostConfig(3, 5, 5)), date(2023, 6, 15)
+    )
     return portfolio
 
 
@@ -282,8 +321,7 @@ def test_invariant_5_equity_paths_agree():
     from trademind.backtesting.portfolio import RECONCILE_TOLERANCE
 
     portfolio = _funded_portfolio()
-    assert abs(portfolio.reconcile({"A": 1200.0}, date(2023, 6, 16))) \
-        < RECONCILE_TOLERANCE
+    assert abs(portfolio.reconcile({"A": 1200.0}, date(2023, 6, 16))) < RECONCILE_TOLERANCE
 
 
 def test_mutation_5a_an_uncharged_fee_is_detected():
@@ -292,7 +330,7 @@ def test_mutation_5a_an_uncharged_fee_is_detected():
     from trademind.backtesting.portfolio import ReconciliationError
 
     portfolio = _funded_portfolio()
-    portfolio.total_costs = CostBreakdown()          # wipe the accumulator
+    portfolio.total_costs = CostBreakdown()  # wipe the accumulator
 
     with pytest.raises(ReconciliationError):
         portfolio.reconcile({"A": 1000.0}, date(2023, 6, 15))
@@ -312,7 +350,7 @@ def test_mutation_5c_an_unrecorded_dividend_is_detected():
     from trademind.backtesting.portfolio import ReconciliationError
 
     portfolio = _funded_portfolio()
-    portfolio.cash += 5000.0                          # credited, not recorded
+    portfolio.cash += 5000.0  # credited, not recorded
 
     with pytest.raises(ReconciliationError):
         portfolio.reconcile({"A": 1000.0}, date(2023, 6, 15))
@@ -322,15 +360,26 @@ def test_mutation_5c_an_unrecorded_dividend_is_detected():
 # 6. HOLD carries the position
 # =====================================================================
 
+
 def _decision_inputs():
     from trademind.decision import DecisionInput, Position
 
     long_position = Position("A", shares=100.0, cost_basis=1000.0)
     return (
-        DecisionInput("A", date(2023, 6, 15), calibrated_probability=0.50,
-                      expected_return=0.01, position=long_position),
-        DecisionInput("A", date(2023, 6, 15), calibrated_probability=0.50,
-                      expected_return=0.01, position=Position("A")),
+        DecisionInput(
+            "A",
+            date(2023, 6, 15),
+            calibrated_probability=0.50,
+            expected_return=0.01,
+            position=long_position,
+        ),
+        DecisionInput(
+            "A",
+            date(2023, 6, 15),
+            calibrated_probability=0.50,
+            expected_return=0.01,
+            position=Position("A"),
+        ),
     )
 
 
@@ -351,13 +400,16 @@ def test_invariant_6b_hold_never_produces_a_fill():
     from trademind.backtesting.config import BacktestConfig, CostConfig
 
     portfolio = Portfolio(1_000_000.0)
-    portfolio.buy("A", 100, 1000.0,
-                  compute_costs(100_000.0, CostConfig(0, 0, 0)), date(2023, 6, 15))
+    portfolio.buy(
+        "A", 100, 1000.0, compute_costs(100_000.0, CostConfig(0, 0, 0)), date(2023, 6, 15)
+    )
 
-    order = Order("A", decision_date=date(2023, 6, 15),
-                  target_weight=float("nan"), signal="HOLD")
-    fills = execute_orders([order], portfolio, date(2023, 6, 16),
-                           {"A": 1000.0}, BacktestConfig())
+    order = Order(
+        "A", decision_date=date(2023, 6, 15), target_weight=float("nan"), signal="HOLD"
+    )
+    fills = execute_orders(
+        [order], portfolio, date(2023, 6, 16), {"A": 1000.0}, BacktestConfig()
+    )
 
     assert fills == []
     assert portfolio.position("A").shares == 100.0
@@ -366,19 +418,29 @@ def test_invariant_6b_hold_never_produces_a_fill():
 def test_invariant_6c_errors_preserve_rather_than_liquidate():
     """An outage must not become a realised loss plus a round trip."""
     from trademind.decision import (
-        DecisionEngine, DecisionInput, Position, RejectReason, RiskEngine,
-        Signal, Thresholds,
+        DecisionEngine,
+        DecisionInput,
+        Position,
+        RejectReason,
+        RiskEngine,
+        Signal,
+        Thresholds,
     )
 
     engine = DecisionEngine(
         Thresholds(buy=0.55, sell=0.45, min_expected_return=0.0039),
         RiskEngine(max_data_age_sessions=3),
     )
-    decision = engine.decide(DecisionInput(
-        "A", date(2023, 6, 15), calibrated_probability=0.30,
-        expected_return=-0.05, data_age_sessions=99,
-        position=Position("A", shares=100.0, cost_basis=1000.0),
-    ))
+    decision = engine.decide(
+        DecisionInput(
+            "A",
+            date(2023, 6, 15),
+            calibrated_probability=0.30,
+            expected_return=-0.05,
+            data_age_sessions=99,
+            position=Position("A", shares=100.0, cost_basis=1000.0),
+        )
+    )
 
     assert decision.rejected
     assert decision.reject_reason is RejectReason.STALE_DATA
@@ -389,6 +451,7 @@ def test_invariant_6c_errors_preserve_rather_than_liquidate():
 # =====================================================================
 # 7. SELL exits a long, and never opens a short
 # =====================================================================
+
 
 def test_invariant_7_sell_exits_a_long():
     from trademind.decision import Signal, Thresholds, generate_signal
@@ -421,7 +484,10 @@ def test_mutation_7_shorting_is_structurally_impossible():
 
     with pytest.raises(ValueError, match="long-only"):
         Portfolio(1_000_000.0).sell(
-            "A", 100, 1000.0, compute_costs(100_000.0, CostConfig(0, 0, 0)),
+            "A",
+            100,
+            1000.0,
+            compute_costs(100_000.0, CostConfig(0, 0, 0)),
             date(2023, 6, 15),
         )
 
@@ -430,11 +496,14 @@ def test_mutation_7_shorting_is_structurally_impossible():
 # 8. A failed candidate cannot be promoted
 # =====================================================================
 
+
 def _failed_outcome():
     from trademind.monitoring import ValidationOutcome
 
     return ValidationOutcome(
-        passed=False, candidate_version="cand-1", incumbent_version="prod-1",
+        passed=False,
+        candidate_version="cand-1",
+        incumbent_version="prod-1",
         checks={"auc_not_worse": False},
     )
 
@@ -474,6 +543,7 @@ def test_mutation_8b_the_registry_blocks_it_independently(tmp_path):
 # =====================================================================
 # Meta: the suite must be complete
 # =====================================================================
+
 
 def test_all_eight_invariants_are_covered():
     """Guards against an invariant being quietly dropped from the suite."""

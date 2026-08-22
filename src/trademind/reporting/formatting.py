@@ -30,8 +30,11 @@ class Verdict(str, Enum):
     @property
     def symbol(self) -> str:
         return {
-            "GOOD": "✓", "NEUTRAL": "–", "CONCERN": "!",
-            "BAD": "✗", "UNKNOWN": "?",
+            "GOOD": "✓",
+            "NEUTRAL": "–",
+            "CONCERN": "!",
+            "BAD": "✗",
+            "UNKNOWN": "?",
         }[self.value]
 
 
@@ -41,7 +44,7 @@ class Metric:
 
     label: str
     value: float | None
-    unit: str = ""              # "", "%", "bps", "x"
+    unit: str = ""  # "", "%", "bps", "x"
     stderr: float | None = None
     baseline: float | None = None
     baseline_label: str = "baseline"
@@ -58,9 +61,12 @@ class Metric:
             return "n/a"
         v = self.value
         if self.unit == "%":
-            return f"{v:+.2%}" if v < 0 or self.label.lower().startswith(
-                ("return", "cagr", "drawdown", "lift")
-            ) else f"{v:.2%}"
+            return (
+                f"{v:+.2%}"
+                if v < 0
+                or self.label.lower().startswith(("return", "cagr", "drawdown", "lift"))
+                else f"{v:.2%}"
+            )
         if self.unit == "bps":
             return f"{v * 10000:+.1f} bps"
         if self.unit == "x":
@@ -76,10 +82,7 @@ class Metric:
         if self.stderr is not None and math.isfinite(self.stderr):
             parts.append(f"± {self.stderr:.{self.decimals}f}")
         if self.baseline is not None and math.isfinite(self.baseline):
-            parts.append(
-                f"(vs {self.baseline_label} "
-                f"{self.baseline:.{self.decimals}f})"
-            )
+            parts.append(f"(vs {self.baseline_label} {self.baseline:.{self.decimals}f})")
         return " ".join(parts)
 
     @property

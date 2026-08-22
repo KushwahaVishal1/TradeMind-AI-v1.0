@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import streamlit as st
+from components.render import empty_state, render_panel
 
 from trademind.reporting import build_performance_panel
-
-from components.render import empty_state, render_panel
 
 
 def render(state, cfg, store) -> None:

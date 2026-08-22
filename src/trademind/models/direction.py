@@ -39,37 +39,47 @@ class DirectionModel(BaseModel):
         params = dict(self.spec.params)
 
         if kind == "logistic":
-            return Pipeline([
-                ("impute", make_imputer()),
-                ("scale", StandardScaler()),
-                ("model", LogisticRegression(
-                    C=params.get("C", 1.0),
-                    # L2 is the default; naming it explicitly triggers a
-                    # deprecation warning on scikit-learn >= 1.8.
-                    solver="lbfgs",
-                    max_iter=params.get("max_iter", 2000),
-                    class_weight=params.get("class_weight"),
-                    random_state=RANDOM_STATE,
-                )),
-            ])
+            return Pipeline(
+                [
+                    ("impute", make_imputer()),
+                    ("scale", StandardScaler()),
+                    (
+                        "model",
+                        LogisticRegression(
+                            C=params.get("C", 1.0),
+                            # L2 is the default; naming it explicitly triggers a
+                            # deprecation warning on scikit-learn >= 1.8.
+                            solver="lbfgs",
+                            max_iter=params.get("max_iter", 2000),
+                            class_weight=params.get("class_weight"),
+                            random_state=RANDOM_STATE,
+                        ),
+                    ),
+                ]
+            )
 
         if kind == "hgb":
             # Conservative defaults. Daily equity direction has a tiny
             # signal-to-noise ratio, so shallow trees, heavy regularisation and
             # large leaves are the right prior. Deep trees memorise noise and
             # the validation curve will not always reveal it.
-            return Pipeline([
-                ("model", HistGradientBoostingClassifier(
-                    max_depth=params.get("max_depth", 3),
-                    max_iter=params.get("max_iter", 200),
-                    learning_rate=params.get("learning_rate", 0.03),
-                    min_samples_leaf=params.get("min_samples_leaf", 200),
-                    l2_regularization=params.get("l2_regularization", 1.0),
-                    max_leaf_nodes=params.get("max_leaf_nodes", 15),
-                    early_stopping=False,   # the outer purged split judges this
-                    random_state=RANDOM_STATE,
-                )),
-            ])
+            return Pipeline(
+                [
+                    (
+                        "model",
+                        HistGradientBoostingClassifier(
+                            max_depth=params.get("max_depth", 3),
+                            max_iter=params.get("max_iter", 200),
+                            learning_rate=params.get("learning_rate", 0.03),
+                            min_samples_leaf=params.get("min_samples_leaf", 200),
+                            l2_regularization=params.get("l2_regularization", 1.0),
+                            max_leaf_nodes=params.get("max_leaf_nodes", 15),
+                            early_stopping=False,  # the outer purged split judges this
+                            random_state=RANDOM_STATE,
+                        ),
+                    ),
+                ]
+            )
 
         raise ValueError(f"Unknown direction estimator: {kind}")
 
@@ -83,14 +93,24 @@ class DirectionModel(BaseModel):
 
 
 def logistic_direction(feature_version: str = "f1", **params) -> DirectionModel:
-    return DirectionModel(ModelSpec(
-        name="direction_logistic", task="direction", estimator="logistic",
-        params=params, feature_version=feature_version,
-    ))
+    return DirectionModel(
+        ModelSpec(
+            name="direction_logistic",
+            task="direction",
+            estimator="logistic",
+            params=params,
+            feature_version=feature_version,
+        )
+    )
 
 
 def hgb_direction(feature_version: str = "f1", **params) -> DirectionModel:
-    return DirectionModel(ModelSpec(
-        name="direction_hgb", task="direction", estimator="hgb",
-        params=params, feature_version=feature_version,
-    ))
+    return DirectionModel(
+        ModelSpec(
+            name="direction_hgb",
+            task="direction",
+            estimator="hgb",
+            params=params,
+            feature_version=feature_version,
+        )
+    )

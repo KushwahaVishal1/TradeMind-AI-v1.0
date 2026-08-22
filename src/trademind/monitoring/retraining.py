@@ -57,7 +57,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 
 log = logging.getLogger(__name__)
@@ -102,8 +102,7 @@ class MonitoringSignals:
     @property
     def drift_fraction(self) -> float:
         return (
-            self.n_features_drifting / self.n_features_total
-            if self.n_features_total else 0.0
+            self.n_features_drifting / self.n_features_total if self.n_features_total else 0.0
         )
 
     @property
@@ -124,9 +123,7 @@ class PolicyDecision:
         lines = [f"{self.state.value} — {self.diagnosis.value}"]
         for r in self.reasons:
             lines.append(f"  - {r}")
-        lines.append(
-            f"  retrain: {'YES' if self.should_retrain else 'no'}"
-        )
+        lines.append(f"  retrain: {'YES' if self.should_retrain else 'no'}")
         return "\n".join(lines)
 
 
@@ -186,9 +183,7 @@ class RetrainingPolicy:
             )
 
         # --- Gate 3: drift alone is never enough ------------------------
-        performance_problem = (
-            signals.performance_degraded or signals.calibration_drifted
-        )
+        performance_problem = signals.performance_degraded or signals.calibration_drifted
 
         if signals.has_drift and not performance_problem:
             return PolicyDecision(
@@ -198,10 +193,13 @@ class RetrainingPolicy:
                     else HealthState.HEALTHY
                 ),
                 diagnosis=Diagnosis.DRIFT_ONLY_MODEL_COPING,
-                reasons=tuple(reasons + [
-                    "Drift without a performance problem does not justify "
-                    "retraining. The distribution moved; the model is coping."
-                ]),
+                reasons=tuple(
+                    reasons
+                    + [
+                        "Drift without a performance problem does not justify "
+                        "retraining. The distribution moved; the model is coping."
+                    ]
+                ),
                 should_retrain=False,
             )
 
@@ -215,14 +213,15 @@ class RetrainingPolicy:
 
         # --- Performance problem: diagnose the cause --------------------
         diagnosis = (
-            Diagnosis.LIKELY_REGIME_CHANGE if signals.has_drift
+            Diagnosis.LIKELY_REGIME_CHANGE
+            if signals.has_drift
             else Diagnosis.LIKELY_RELATIONSHIP_CHANGE
         )
         reasons.append(
             "Performance fell alongside input drift: the distribution moved "
             "and the model did not follow. Retraining is likely to help."
-            if signals.has_drift else
-            "Performance fell with stable inputs: the feature-target "
+            if signals.has_drift
+            else "Performance fell with stable inputs: the feature-target "
             "relationship changed. Retraining on the same features may not "
             "help — investigate the feature set."
         )
@@ -231,9 +230,7 @@ class RetrainingPolicy:
             return PolicyDecision(
                 state=HealthState.DEGRADED,
                 diagnosis=diagnosis,
-                reasons=tuple(reasons + [
-                    "Waiting for more observations before retraining."
-                ]),
+                reasons=tuple(reasons + ["Waiting for more observations before retraining."]),
                 should_retrain=False,
             )
 
@@ -248,6 +245,7 @@ class RetrainingPolicy:
 # =====================================================================
 # Candidate validation and promotion
 # =====================================================================
+
 
 @dataclass(frozen=True)
 class ValidationOutcome:
@@ -282,7 +280,7 @@ class PromotionDecision:
     promote: bool
     outcome: ValidationOutcome
     decided_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds")
+        default_factory=lambda: datetime.now(UTC).isoformat(timespec="seconds")
     )
     reason: str = ""
 
@@ -297,8 +295,7 @@ class PromotionDecision:
     @property
     def final_state(self) -> HealthState:
         return (
-            HealthState.PROMOTE_NEW_MODEL if self.promote
-            else HealthState.KEEP_CURRENT_MODEL
+            HealthState.PROMOTE_NEW_MODEL if self.promote else HealthState.KEEP_CURRENT_MODEL
         )
 
 
@@ -350,8 +347,12 @@ def validate_candidate(
         candidate_version=candidate_version,
         incumbent_version=incumbent_version,
         checks=checks,
-        metrics={"candidate_auc": cand_auc, "incumbent_auc": inc_auc,
-                 "candidate_ece": cand_ece, "incumbent_ece": inc_ece},
+        metrics={
+            "candidate_auc": cand_auc,
+            "incumbent_auc": inc_auc,
+            "candidate_ece": cand_ece,
+            "incumbent_ece": inc_ece,
+        },
         notes=tuple(notes),
     )
 
@@ -360,11 +361,13 @@ def decide_promotion(outcome: ValidationOutcome) -> PromotionDecision:
     """Turn a validation outcome into a promotion decision. Never overrides."""
     if outcome.passed:
         return PromotionDecision(
-            promote=True, outcome=outcome,
+            promote=True,
+            outcome=outcome,
             reason=f"{outcome.candidate_version} passed every validation check.",
         )
     return PromotionDecision(
-        promote=False, outcome=outcome,
+        promote=False,
+        outcome=outcome,
         reason=(
             f"{outcome.candidate_version} failed: "
             f"{', '.join(outcome.failed_checks)}. Incumbent "

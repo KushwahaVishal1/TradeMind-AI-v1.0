@@ -18,9 +18,10 @@ from __future__ import annotations
 import hashlib
 import sqlite3
 import uuid
+from collections.abc import Iterable, Sequence
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
-from typing import Any, Iterable, Sequence
+from datetime import UTC, datetime
+from typing import Any
 
 SIGNALS = ("BUY", "HOLD", "SELL")
 
@@ -30,7 +31,7 @@ class PredictionConflictError(RuntimeError):
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 @dataclass(frozen=True)
@@ -38,14 +39,14 @@ class Prediction:
     """One decision for one symbol on one day, with full lineage."""
 
     symbol: str
-    prediction_date: str            # ISO date, the 't' whose features were used
+    prediction_date: str  # ISO date, the 't' whose features were used
     model_version: str
     feature_version: str
     decision_version: str
     threshold_version: str
     signal: str
 
-    execution_date: str | None = None       # 't+1' — the session we act on
+    execution_date: str | None = None  # 't+1' — the session we act on
     predicted_probability: float | None = None
     calibrated_probability: float | None = None
     predicted_return: float | None = None
@@ -115,8 +116,13 @@ class PredictionStore:
 
     # -- runs ------------------------------------------------------------
 
-    def start_run(self, mode: str, config_hash: str, git_commit: str | None = None,
-                  python_version: str | None = None) -> str:
+    def start_run(
+        self,
+        mode: str,
+        config_hash: str,
+        git_commit: str | None = None,
+        python_version: str | None = None,
+    ) -> str:
         run_id = uuid.uuid4().hex[:16]
         self.conn.execute(
             "INSERT INTO runs (run_id, mode, started_at, status, git_commit, "
@@ -177,8 +183,9 @@ class PredictionStore:
         )
         return pid
 
-    def save_many(self, preds: Iterable[Prediction], *,
-                  allow_overwrite: bool = False) -> list[str]:
+    def save_many(
+        self, preds: Iterable[Prediction], *, allow_overwrite: bool = False
+    ) -> list[str]:
         return [self.save(p, allow_overwrite=allow_overwrite) for p in preds]
 
     def get(self, prediction_id: str) -> sqlite3.Row | None:
@@ -204,8 +211,7 @@ class PredictionStore:
             raise KeyError(f"Unknown prediction_id {prediction_id}")
         if pred["status"] == "RESOLVED":
             raise RuntimeError(
-                f"Prediction {prediction_id} is already resolved; outcomes are "
-                "write-once."
+                f"Prediction {prediction_id} is already resolved; outcomes are write-once."
             )
 
         actual_direction = 1 if actual_return > 0 else 0
@@ -216,7 +222,8 @@ class PredictionStore:
             None if prob is None else int((prob >= 0.5) == (actual_direction == 1))
         )
         err = (
-            None if pred["predicted_return"] is None
+            None
+            if pred["predicted_return"] is None
             else float(pred["predicted_return"]) - actual_return
         )
 
@@ -224,8 +231,7 @@ class PredictionStore:
             "INSERT INTO outcomes (prediction_id, resolved_at, actual_return, "
             "actual_direction, direction_correct, return_error) "
             "VALUES (?, ?, ?, ?, ?, ?)",
-            (prediction_id, _now(), actual_return, actual_direction,
-             direction_correct, err),
+            (prediction_id, _now(), actual_return, actual_direction, direction_correct, err),
         )
         self.conn.execute(
             "UPDATE predictions SET status = 'RESOLVED' WHERE prediction_id = ?",
@@ -242,9 +248,15 @@ class PredictionStore:
 
     # -- data quality ----------------------------------------------------
 
-    def log_issue(self, severity: str, code: str, detail: str = "",
-                  symbol: str | None = None, issue_date: str | None = None,
-                  run_id: str | None = None) -> None:
+    def log_issue(
+        self,
+        severity: str,
+        code: str,
+        detail: str = "",
+        symbol: str | None = None,
+        issue_date: str | None = None,
+        run_id: str | None = None,
+    ) -> None:
         self.conn.execute(
             "INSERT INTO data_quality_issues (run_id, symbol, issue_date, "
             "severity, code, detail, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",

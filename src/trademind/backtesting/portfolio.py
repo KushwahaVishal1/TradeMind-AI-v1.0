@@ -93,9 +93,9 @@ class Trade:
 
     trade_date: date
     symbol: str
-    side: str                 # BUY | SELL
+    side: str  # BUY | SELL
     shares: float
-    price: float              # as-traded execution price
+    price: float  # as-traded execution price
     costs: CostBreakdown
     realised_pnl: float = 0.0
 
@@ -181,8 +181,9 @@ class Portfolio:
 
     # -- mutations -------------------------------------------------------
 
-    def buy(self, symbol: str, shares: float, price: float,
-            costs: CostBreakdown, when: date) -> Trade:
+    def buy(
+        self, symbol: str, shares: float, price: float, costs: CostBreakdown, when: date
+    ) -> Trade:
         """Open or increase a long. Cost basis becomes the weighted average."""
         if shares <= 0:
             raise ValueError(f"buy shares must be positive, got {shares}")
@@ -190,15 +191,14 @@ class Portfolio:
         outlay = shares * price + costs.total
         if outlay > self.cash + 1e-9:
             raise ValueError(
-                f"Insufficient cash for {symbol}: need {outlay:,.2f}, "
-                f"have {self.cash:,.2f}"
+                f"Insufficient cash for {symbol}: need {outlay:,.2f}, have {self.cash:,.2f}"
             )
 
         holding = self.holdings.setdefault(symbol, Holding(symbol))
         total_shares = holding.shares + shares
         holding.cost_basis = (
-            (holding.shares * holding.cost_basis + shares * price) / total_shares
-        )
+            holding.shares * holding.cost_basis + shares * price
+        ) / total_shares
         holding.shares = total_shares
 
         self.cash -= outlay
@@ -208,8 +208,9 @@ class Portfolio:
         self.trades.append(trade)
         return trade
 
-    def sell(self, symbol: str, shares: float, price: float,
-             costs: CostBreakdown, when: date) -> Trade:
+    def sell(
+        self, symbol: str, shares: float, price: float, costs: CostBreakdown, when: date
+    ) -> Trade:
         """Reduce or close a long, realising P&L against the cost basis."""
         holding = self.holdings.get(symbol)
         if holding is None or holding.shares < shares - 1e-9:

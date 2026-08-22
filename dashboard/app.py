@@ -21,13 +21,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 import streamlit as st  # noqa: E402
+from pages import drift, model, overview, performance, retraining, signals  # noqa: E402
 
 from trademind.config import load_config  # noqa: E402
 from trademind.reporting import build_dashboard_state  # noqa: E402
 from trademind.storage import PredictionStore, init_db  # noqa: E402
-
-from components.render import render_panel  # noqa: E402
-from pages import drift, model, overview, performance, retraining, signals  # noqa: E402
 
 PAGES = {
     "Overview": overview,
@@ -53,9 +51,7 @@ def main() -> None:
     state = build_dashboard_state(cfg, store)
 
     st.sidebar.title("TradeMind AI")
-    st.sidebar.caption(
-        "Probabilistic market signal and decision-support platform"
-    )
+    st.sidebar.caption("Probabilistic market signal and decision-support platform")
     choice = st.sidebar.radio("Page", list(PAGES))
 
     st.sidebar.divider()

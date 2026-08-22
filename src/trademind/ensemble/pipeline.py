@@ -18,8 +18,8 @@ as if it were step 4's result is the circularity described in ``calibrator.py``.
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Mapping, Sequence
 
 import pandas as pd
 
@@ -102,11 +102,13 @@ def build_ensemble(
     """Run the full stack-and-calibrate pipeline."""
     frames = {name: r.predictions for name, r in base_results.items()}
 
-    base_metrics = pd.DataFrame([
-        {"model": name, **r.pooled_metrics}
-        for name, r in base_results.items()
-        if r.task == "direction"
-    ])
+    base_metrics = pd.DataFrame(
+        [
+            {"model": name, **r.pooled_metrics}
+            for name, r in base_results.items()
+            if r.task == "direction"
+        ]
+    )
 
     meta = build_meta_features(frames, extra=context, extra_cols=context_cols)
 
@@ -118,9 +120,7 @@ def build_ensemble(
         stack.predictions, method=calibration_method, n_blocks=calibration_blocks
     )
 
-    production = fit_production_calibrator(
-        stack.predictions, method=calibration_method
-    )
+    production = fit_production_calibrator(stack.predictions, method=calibration_method)
 
     before = calibration_metrics(
         calibration.predictions["y_true"], calibration.predictions["raw"]
@@ -130,14 +130,17 @@ def build_ensemble(
     )
     log.info(
         "ECE %.4f -> %.4f | sharpness %.4f -> %.4f",
-        before["ece_quantile"], after["ece_quantile"],
-        before["sharpness"], after["sharpness"],
+        before["ece_quantile"],
+        after["ece_quantile"],
+        before["sharpness"],
+        after["sharpness"],
     )
     if after["ece_quantile"] > before["ece_quantile"]:
         log.warning(
             "Calibration made ECE worse out-of-fold (%.4f -> %.4f). The "
             "calibrator is fitting noise; try method='sigmoid' or more data.",
-            before["ece_quantile"], after["ece_quantile"],
+            before["ece_quantile"],
+            after["ece_quantile"],
         )
 
     return EnsembleResult(stack, calibration, production, meta)

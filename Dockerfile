@@ -21,7 +21,8 @@ RUN pip install --upgrade pip && \
     pip install -e ".[dev]" 2>/dev/null || pip install \
         "pandas>=2.2" "numpy>=1.26" "pyarrow>=15.0" "duckdb>=1.0" \
         "pyyaml>=6.0" "scikit-learn>=1.4" "scipy>=1.11" \
-        "yfinance>=0.2.40" "pandas-market-calendars>=4.4" "pytest>=8.0"
+        "yfinance>=0.2.40" "pandas-market-calendars>=4.4" "pytest>=8.0" \
+        "streamlit>=1.30"
 
 COPY src/ ./src/
 COPY tests/ ./tests/
@@ -40,6 +41,8 @@ RUN useradd --create-home --uid 1000 trademind && \
     chown -R trademind:trademind /app
 USER trademind
 
-ENV PYTHONPATH=/app/src
+# Set PATH to include local user binary directory where pip puts executables
+ENV PATH="/home/trademind/.local/bin:${PATH}" \
+    PYTHONPATH=/app/src
 
 CMD ["python", "main.py", "--help"]

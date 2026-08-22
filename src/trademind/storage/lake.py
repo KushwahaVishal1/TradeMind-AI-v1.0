@@ -46,8 +46,13 @@ class ParquetLake:
         return self.root / "raw" / "market_data" / f"symbol={_safe(symbol)}" / "daily.parquet"
 
     def feature_path(self, symbol: str, feature_version: str) -> Path:
-        return (self.root / "processed" / "features"
-                / f"symbol={_safe(symbol)}" / f"{feature_version}.parquet")
+        return (
+            self.root
+            / "processed"
+            / "features"
+            / f"symbol={_safe(symbol)}"
+            / f"{feature_version}.parquet"
+        )
 
     # -- market data ------------------------------------------------------
 
@@ -96,14 +101,14 @@ class ParquetLake:
         if not base.exists():
             return []
         return sorted(
-            p.name.split("=", 1)[1] for p in base.iterdir()
+            p.name.split("=", 1)[1]
+            for p in base.iterdir()
             if p.is_dir() and p.name.startswith("symbol=")
         )
 
     # -- features ---------------------------------------------------------
 
-    def write_features(self, symbol: str, feature_version: str,
-                       df: pd.DataFrame) -> Path:
+    def write_features(self, symbol: str, feature_version: str, df: pd.DataFrame) -> Path:
         path = self.feature_path(symbol, feature_version)
         path.parent.mkdir(parents=True, exist_ok=True)
         df.to_parquet(path, index=False)
@@ -116,12 +121,14 @@ class ParquetLake:
     def read_all_features(self, feature_version: str) -> pd.DataFrame:
         """Every symbol's features, concatenated. The modelling entry point."""
         frames = [
-            f for f in (
-                self.read_features(s, feature_version) for s in self.symbols()
-            ) if f is not None and not f.empty
+            f
+            for f in (self.read_features(s, feature_version) for s in self.symbols())
+            if f is not None and not f.empty
         ]
         if not frames:
             return pd.DataFrame()
-        return pd.concat(frames, ignore_index=True).sort_values(
-            ["date", "symbol"]
-        ).reset_index(drop=True)
+        return (
+            pd.concat(frames, ignore_index=True)
+            .sort_values(["date", "symbol"])
+            .reset_index(drop=True)
+        )

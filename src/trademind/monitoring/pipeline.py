@@ -9,7 +9,7 @@ consumes them keeps the two from drifting apart.
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timezone
+from datetime import date
 
 import pandas as pd
 
@@ -61,7 +61,8 @@ def run_monitoring(
     )
     if dq_errors:
         alerts.add(
-            Severity.ERROR, "DATA_QUALITY_ERRORS",
+            Severity.ERROR,
+            "DATA_QUALITY_ERRORS",
             f"{dq_errors} unresolved ingestion error(s); retraining is blocked.",
         )
 
@@ -69,11 +70,9 @@ def run_monitoring(
     perf_monitor = PerformanceMonitor(baseline_auc=baseline_auc)
     performance = perf_monitor.evaluate(resolved, as_of)
     if performance["detected"]:
-        alerts.add(Severity.WARNING, "PERFORMANCE_DEGRADED",
-                   performance["explanation"])
+        alerts.add(Severity.WARNING, "PERFORMANCE_DEGRADED", performance["explanation"])
     elif performance["status"] == "INSUFFICIENT_DATA":
-        alerts.add(Severity.INFO, "INSUFFICIENT_OUTCOMES",
-                   performance["explanation"])
+        alerts.add(Severity.INFO, "INSUFFICIENT_OUTCOMES", performance["explanation"])
 
     # 3. Calibration.
     calibration = monitor_calibration(resolved, as_of)
@@ -86,7 +85,8 @@ def run_monitoring(
     persistent = tracker.update(drift) if not drift.empty else []
     if persistent:
         alerts.add(
-            Severity.WARNING, "PERSISTENT_FEATURE_DRIFT",
+            Severity.WARNING,
+            "PERSISTENT_FEATURE_DRIFT",
             f"{len(persistent)} feature(s) drifting for "
             f"{tracker.persistence_days}+ consecutive checks: {persistent[:5]}",
         )
@@ -97,9 +97,7 @@ def run_monitoring(
     judged = performance.get("judged_on")
     signals = MonitoringSignals(
         performance_degraded=performance["detected"],
-        performance_detectable=bool(
-            judged is not None and judged.reportable
-        ),
+        performance_detectable=bool(judged is not None and judged.reportable),
         calibration_drifted=cal_drifted,
         n_features_drifting=len(persistent),
         n_features_total=int(summary.get("n_features", len(feature_columns))),

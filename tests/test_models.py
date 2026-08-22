@@ -31,7 +31,7 @@ from trademind.models.oof import (
     generate_oof,
 )
 from trademind.models.registry import ModelRegistry
-from trademind.models.return_model import ReturnModel, hgb_return, ridge_return
+from trademind.models.return_model import hgb_return, ridge_return
 from trademind.validation.embargo import GapConfig
 from trademind.validation.purged_split import PurgedWalkForwardSplit
 
@@ -47,18 +47,26 @@ def noise_panel(n_days=1000, symbols=("A", "B", "C"), seed=0, signal=0.0):
         f = rng.normal(size=(n_days, 3))
         noise = rng.normal(0, 0.015, n_days)
         y = signal * f[:, 0] * 0.015 + noise
-        out.append(pd.DataFrame({
-            "date": dates, "symbol": s,
-            "f1": f[:, 0], "f2": f[:, 1], "f3": f[:, 2],
-            "tradeable_return_1d": y,
-            "tradeable_direction_1d": (y > 0).astype(float),
-        }))
+        out.append(
+            pd.DataFrame(
+                {
+                    "date": dates,
+                    "symbol": s,
+                    "f1": f[:, 0],
+                    "f2": f[:, 1],
+                    "f3": f[:, 2],
+                    "tradeable_return_1d": y,
+                    "tradeable_direction_1d": (y > 0).astype(float),
+                }
+            )
+        )
     return pd.concat(out).sort_values(["date", "symbol"]).reset_index(drop=True)
 
 
 def splitter(n_splits=3):
     return PurgedWalkForwardSplit(
-        n_splits=n_splits, test_sessions=120,
+        n_splits=n_splits,
+        test_sessions=120,
         gaps=GapConfig(horizon=1, purge=2, embargo=3),
         min_train_sessions=252,
     )
@@ -67,6 +75,7 @@ def splitter(n_splits=3):
 # =====================================================================
 # The preprocessing leak
 # =====================================================================
+
 
 def test_scaler_fitted_outside_the_fold_leaks():
     """Standardising before splitting moves validation-fold feature values.
@@ -80,7 +89,7 @@ def test_scaler_fitted_outside_the_fold_leaks():
     rng = np.random.default_rng(1)
     n = 600
     x = rng.normal(size=n)
-    x[400:] += 25.0            # a regime shift in the validation period
+    x[400:] += 25.0  # a regime shift in the validation period
 
     # Wrong: fitted on everything.
     global_scaled = StandardScaler().fit_transform(x.reshape(-1, 1)).ravel()
@@ -115,13 +124,18 @@ def test_gradient_boosting_does_not_impute():
 # No skill on noise
 # =====================================================================
 
+
 def test_no_skill_on_pure_noise():
     """AUC must sit near 0.5 on random data. Anything else means a leak."""
     panel = noise_panel(n_days=1000, signal=0.0)
 
     result = generate_oof(
-        panel, logistic_direction, FEATURES,
-        "tradeable_direction_1d", task="direction", splitter=splitter(),
+        panel,
+        logistic_direction,
+        FEATURES,
+        "tradeable_direction_1d",
+        task="direction",
+        splitter=splitter(),
     )
     auc = result.pooled_metrics["roc_auc"]
     assert 0.44 < auc < 0.56, f"AUC {auc:.3f} on pure noise indicates leakage"
@@ -131,8 +145,12 @@ def test_return_model_finds_no_signal_in_noise():
     panel = noise_panel(n_days=1000, signal=0.0)
 
     result = generate_oof(
-        panel, ridge_return, FEATURES,
-        "tradeable_return_1d", task="return", splitter=splitter(),
+        panel,
+        ridge_return,
+        FEATURES,
+        "tradeable_return_1d",
+        task="return",
+        splitter=splitter(),
     )
     ic = result.pooled_metrics["information_coefficient"]
     assert abs(ic) < 0.10, f"IC {ic:.3f} on pure noise indicates leakage"
@@ -143,8 +161,12 @@ def test_model_does_find_a_planted_signal():
     panel = noise_panel(n_days=1000, signal=3.0)
 
     result = generate_oof(
-        panel, logistic_direction, FEATURES,
-        "tradeable_direction_1d", task="direction", splitter=splitter(),
+        panel,
+        logistic_direction,
+        FEATURES,
+        "tradeable_direction_1d",
+        task="direction",
+        splitter=splitter(),
     )
     assert result.pooled_metrics["roc_auc"] > 0.65
 
@@ -152,6 +174,7 @@ def test_model_does_find_a_planted_signal():
 # =====================================================================
 # Metrics
 # =====================================================================
+
 
 def test_majority_baseline_is_reported():
     y = np.r_[np.ones(70), np.zeros(30)]
@@ -219,8 +242,11 @@ def test_implausible_ic_is_flagged():
 # Baselines
 # =====================================================================
 
+
 def test_majority_baseline_predicts_a_constant():
-    b = MajorityBaseline().fit(pd.DataFrame({"a": range(10)}), pd.Series([1.0] * 7 + [0.0] * 3))
+    b = MajorityBaseline().fit(
+        pd.DataFrame({"a": range(10)}), pd.Series([1.0] * 7 + [0.0] * 3)
+    )
     preds = b.predict(pd.DataFrame({"a": range(5)}))
     assert np.allclose(preds, 0.7)
 
@@ -242,10 +268,12 @@ def test_baseline_auc_is_undefined_not_flattering():
 # OOF mechanics
 # =====================================================================
 
+
 def test_oof_rows_are_unique():
     panel = noise_panel(n_days=1000)
-    r = generate_oof(panel, logistic_direction, FEATURES,
-                     "tradeable_direction_1d", "direction", splitter())
+    r = generate_oof(
+        panel, logistic_direction, FEATURES, "tradeable_direction_1d", "direction", splitter()
+    )
     assert not r.predictions.duplicated(subset=["date", "symbol"]).any()
 
 
@@ -253,8 +281,9 @@ def test_oof_predictions_are_out_of_sample():
     """Every predicted date must fall strictly inside its fold's validation window."""
     panel = noise_panel(n_days=1000)
     sp = splitter()
-    r = generate_oof(panel, logistic_direction, FEATURES,
-                     "tradeable_direction_1d", "direction", sp)
+    r = generate_oof(
+        panel, logistic_direction, FEATURES, "tradeable_direction_1d", "direction", sp
+    )
 
     labelled = panel[panel["tradeable_direction_1d"].notna()].reset_index(drop=True)
     for fold in sp.split(labelled):
@@ -273,8 +302,9 @@ def test_each_fold_gets_a_fresh_model():
         return m
 
     panel = noise_panel(n_days=1000)
-    generate_oof(panel, factory, FEATURES, "tradeable_direction_1d",
-                 "direction", splitter(n_splits=3))
+    generate_oof(
+        panel, factory, FEATURES, "tradeable_direction_1d", "direction", splitter(n_splits=3)
+    )
 
     assert len(built) == 3
     assert len({id(m) for m in built}) == 3
@@ -282,8 +312,9 @@ def test_each_fold_gets_a_fresh_model():
 
 def test_fold_metrics_report_spread():
     panel = noise_panel(n_days=1000)
-    r = generate_oof(panel, logistic_direction, FEATURES,
-                     "tradeable_direction_1d", "direction", splitter())
+    r = generate_oof(
+        panel, logistic_direction, FEATURES, "tradeable_direction_1d", "direction", splitter()
+    )
     agg = r.aggregate()
     assert "roc_auc_mean" in agg and "roc_auc_std" in agg
 
@@ -291,10 +322,17 @@ def test_fold_metrics_report_spread():
 def test_compare_models_ranks_them():
     panel = noise_panel(n_days=1000, signal=2.0)
     results = [
-        generate_oof(panel, logistic_direction, FEATURES,
-                     "tradeable_direction_1d", "direction", splitter()),
-        generate_oof(panel, hgb_direction, FEATURES,
-                     "tradeable_direction_1d", "direction", splitter()),
+        generate_oof(
+            panel,
+            logistic_direction,
+            FEATURES,
+            "tradeable_direction_1d",
+            "direction",
+            splitter(),
+        ),
+        generate_oof(
+            panel, hgb_direction, FEATURES, "tradeable_direction_1d", "direction", splitter()
+        ),
     ]
     table = compare_models(results)
     assert len(table) == 2
@@ -304,14 +342,16 @@ def test_compare_models_ranks_them():
 
 def test_render_surfaces_warnings():
     panel = noise_panel(n_days=1000, signal=8.0)
-    r = generate_oof(panel, logistic_direction, FEATURES,
-                     "tradeable_direction_1d", "direction", splitter())
+    r = generate_oof(
+        panel, logistic_direction, FEATURES, "tradeable_direction_1d", "direction", splitter()
+    )
     assert "WARNING" in r.render()
 
 
 # =====================================================================
 # Model mechanics
 # =====================================================================
+
 
 def test_direction_model_returns_probabilities():
     panel = noise_panel(n_days=400)
@@ -374,6 +414,7 @@ def test_nan_features_are_tolerated():
 # Versioning and registry
 # =====================================================================
 
+
 def test_spec_hash_is_stable():
     a = ModelSpec("m", "direction", "logistic", {"C": 1.0})
     b = ModelSpec("m", "direction", "logistic", {"C": 1.0})
@@ -396,9 +437,7 @@ def test_version_includes_the_training_end_date():
 
 def test_registry_round_trip(tmp_path):
     panel = noise_panel(n_days=400)
-    m = hgb_direction().fit(
-        panel[FEATURES], panel["tradeable_direction_1d"], panel["date"]
-    )
+    m = hgb_direction().fit(panel[FEATURES], panel["tradeable_direction_1d"], panel["date"])
     reg = ModelRegistry(tmp_path / "models")
     reg.save(m)
 
@@ -426,8 +465,10 @@ def test_registry_records_the_environment(tmp_path):
 def test_registry_lists_and_summarises(tmp_path):
     panel = noise_panel(n_days=400)
     reg = ModelRegistry(tmp_path / "models")
-    for factory, label in ((logistic_direction, "tradeable_direction_1d"),
-                           (ridge_return, "tradeable_return_1d")):
+    for factory, label in (
+        (logistic_direction, "tradeable_direction_1d"),
+        (ridge_return, "tradeable_return_1d"),
+    ):
         reg.save(factory().fit(panel[FEATURES], panel[label], panel["date"]))
 
     assert len(reg.list_versions()) == 2
@@ -465,8 +506,7 @@ def test_permutation_importance_works_for_hgb():
     panel = noise_panel(n_days=600, signal=3.0)
     m = hgb_return().fit(panel[FEATURES], panel["tradeable_return_1d"])
 
-    imp = m.permutation_importance(panel[FEATURES], panel["tradeable_return_1d"],
-                                   n_repeats=3)
+    imp = m.permutation_importance(panel[FEATURES], panel["tradeable_return_1d"], n_repeats=3)
     assert set(imp["feature"]) == set(FEATURES)
     # f1 carries the planted signal, so it should rank first.
     assert imp.iloc[0]["feature"] == "f1"

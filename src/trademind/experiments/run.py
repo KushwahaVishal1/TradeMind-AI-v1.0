@@ -17,8 +17,8 @@ import json
 import platform
 import subprocess
 import uuid
-from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -26,7 +26,9 @@ def _git_commit() -> str | None:
     try:
         out = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         return out.stdout.strip() or None
     except Exception:
@@ -42,7 +44,9 @@ def _git_dirty() -> bool:
     try:
         out = subprocess.run(
             ["git", "status", "--porcelain"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         return bool(out.stdout.strip())
     except Exception:
@@ -67,7 +71,7 @@ class ExperimentRun:
     """One experiment, with everything needed to reproduce it."""
 
     name: str
-    task: str                                  # direction | return | ensemble
+    task: str  # direction | return | ensemble
     model_type: str = ""
     hyperparameters: dict[str, Any] = field(default_factory=dict)
 
@@ -95,7 +99,7 @@ class ExperimentRun:
 
     experiment_id: str = field(default_factory=lambda: uuid.uuid4().hex[:16])
     created_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds")
+        default_factory=lambda: datetime.now(UTC).isoformat(timespec="seconds")
     )
 
     @property
@@ -105,16 +109,20 @@ class ExperimentRun:
     @property
     def fingerprint(self) -> str:
         """Hash of the inputs. Two runs with the same fingerprint should agree."""
-        payload = json.dumps({
-            "git_commit": self.git_commit,
-            "config_hash": self.config_hash,
-            "dataset_version": self.dataset_version,
-            "feature_version": self.feature_version,
-            "model_type": self.model_type,
-            "hyperparameters": self.hyperparameters,
-            "random_seed": self.random_seed,
-            "validation_strategy": self.validation_strategy,
-        }, sort_keys=True, default=str)
+        payload = json.dumps(
+            {
+                "git_commit": self.git_commit,
+                "config_hash": self.config_hash,
+                "dataset_version": self.dataset_version,
+                "feature_version": self.feature_version,
+                "model_type": self.model_type,
+                "hyperparameters": self.hyperparameters,
+                "random_seed": self.random_seed,
+                "validation_strategy": self.validation_strategy,
+            },
+            sort_keys=True,
+            default=str,
+        )
         return hashlib.sha256(payload.encode()).hexdigest()[:16]
 
     def reproducibility_gaps(self) -> list[str]:
@@ -123,9 +131,7 @@ class ExperimentRun:
         if not self.git_commit:
             gaps.append("no git commit recorded")
         if self.git_dirty:
-            gaps.append(
-                "working tree was dirty; the recorded commit is not what ran"
-            )
+            gaps.append("working tree was dirty; the recorded commit is not what ran")
         if not self.config_hash:
             gaps.append("no config hash")
         if not self.dataset_version:

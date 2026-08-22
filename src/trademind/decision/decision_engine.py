@@ -41,7 +41,8 @@ class DecisionEngine:
 
         decision = generate_signal(inp, self.thresholds)
         weight = size_position(
-            decision, inp,
+            decision,
+            inp,
             method=self.sizing_method,
             max_weight=self.max_weight,
             reference_volatility=self.reference_volatility,
@@ -62,8 +63,10 @@ class DecisionEngine:
         """
         ordered = sorted(
             inputs,
-            key=lambda i: (i.calibrated_probability is None,
-                           -(i.calibrated_probability or 0.0)),
+            key=lambda i: (
+                i.calibrated_probability is None,
+                -(i.calibrated_probability or 0.0),
+            ),
         )
 
         open_count = sum(1 for i in inputs if not i.current_position.is_flat)

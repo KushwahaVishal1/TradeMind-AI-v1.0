@@ -106,15 +106,16 @@ class MarketDataIngestion:
                 # Re-fetch a short overlap so that restated bars and any
                 # corporate action announced since the last run are picked up.
                 start = max(start, last - pd.Timedelta(days=7).to_pytimedelta())
-                log.debug("%s: incremental from %s (last stored %s)",
-                          symbol, start, last)
+                log.debug("%s: incremental from %s (last stored %s)", symbol, start, last)
 
         try:
             raw = self.provider.fetch(symbol, start, end)
         except Exception as exc:
             log.error("%s: fetch failed: %s", symbol, exc)
             return IngestionResult(
-                symbol, 0, False,
+                symbol,
+                0,
+                False,
                 ValidationReport(symbol, [Issue("ERROR", "FETCH_FAILED", str(exc), symbol)]),
                 error=str(exc),
             )
@@ -131,8 +132,12 @@ class MarketDataIngestion:
         self._persist_issues(report, run_id)
 
         if not report.ok:
-            log.error("%s: %d error(s), refusing to write. %s",
-                      symbol, len(report.errors), report.errors[0])
+            log.error(
+                "%s: %d error(s), refusing to write. %s",
+                symbol,
+                len(report.errors),
+                report.errors[0],
+            )
             return IngestionResult(symbol, len(enriched), False, report)
 
         self.lake.append_raw(symbol, enriched)
@@ -151,8 +156,7 @@ class MarketDataIngestion:
         summary = IngestionSummary()
         for symbol in symbols:
             summary.results.append(
-                self.ingest_symbol(symbol, start, end,
-                                   run_id=run_id, incremental=incremental)
+                self.ingest_symbol(symbol, start, end, run_id=run_id, incremental=incremental)
             )
         log.info("\n%s", summary.render())
         return summary

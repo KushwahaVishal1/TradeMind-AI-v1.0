@@ -32,7 +32,8 @@ def generate_signal(inp: DecisionInput, thresholds: Thresholds) -> Decision:
     if p >= thresholds.buy:
         if expected is None:
             return preserve_position(
-                inp, RejectReason.MISSING_PROBABILITY,
+                inp,
+                RejectReason.MISSING_PROBABILITY,
                 "Probability clears the buy threshold but no expected return "
                 "is available to check against the cost floor.",
             )
@@ -101,7 +102,6 @@ def generate_signal(inp: DecisionInput, thresholds: Thresholds) -> Decision:
         expected_return=expected,
         target_weight=float("nan") if position.is_long else 0.0,
         rationale=(
-            f"p={p:.3f} sits in the hold band "
-            f"[{thresholds.sell:.3f}, {thresholds.buy:.3f})."
+            f"p={p:.3f} sits in the hold band [{thresholds.sell:.3f}, {thresholds.buy:.3f})."
         ),
     )

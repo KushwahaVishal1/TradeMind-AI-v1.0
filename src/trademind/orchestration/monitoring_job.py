@@ -22,8 +22,9 @@ from .base import Job, JobResult, JobStatus, PipelineContext
 class MonitoringJob(Job):
     name = "monitoring"
 
-    def __init__(self, tracker: DriftTracker | None = None,
-                 policy: RetrainingPolicy | None = None) -> None:
+    def __init__(
+        self, tracker: DriftTracker | None = None, policy: RetrainingPolicy | None = None
+    ) -> None:
         self.tracker = tracker or DriftTracker()
         self.policy = policy or RetrainingPolicy()
 
@@ -36,6 +37,7 @@ class MonitoringJob(Job):
         feature_cols = context.get("feature_columns")
         if not feature_cols:
             from ..features import feature_columns as fc
+
             feature_cols = fc(panel)
 
         resolved = pd.DataFrame([dict(r) for r in store.resolved()])
@@ -54,7 +56,8 @@ class MonitoringJob(Job):
 
         if current.empty:
             return JobResult(
-                self.name, JobStatus.SKIPPED,
+                self.name,
+                JobStatus.SKIPPED,
                 "no data after the training window yet; nothing to compare",
             )
 
@@ -72,11 +75,14 @@ class MonitoringJob(Job):
         context.put("health_report", report)
 
         return JobResult(
-            self.name, JobStatus.SUCCESS,
+            self.name,
+            JobStatus.SUCCESS,
             f"{report.state.value} ({report.decision.diagnosis.value})",
             records=len(resolved),
-            details={"state": report.state.value,
-                     "should_retrain": report.decision.should_retrain},
+            details={
+                "state": report.state.value,
+                "should_retrain": report.decision.should_retrain,
+            },
         )
 
 
@@ -102,13 +108,15 @@ class RetrainingJob(Job):
         decision = report.decision
         if not decision.should_retrain:
             return JobResult(
-                self.name, JobStatus.SKIPPED,
+                self.name,
+                JobStatus.SKIPPED,
                 f"policy says no ({decision.state.value})",
             )
 
         if self.retrain_fn is None:
             return JobResult(
-                self.name, JobStatus.SKIPPED,
+                self.name,
+                JobStatus.SKIPPED,
                 "retraining required but no retrain function is configured",
                 details={"diagnosis": decision.diagnosis.value},
             )
@@ -116,8 +124,8 @@ class RetrainingJob(Job):
         outcome = self.retrain_fn(context)
         promoted = bool(getattr(outcome, "promote", False))
         return JobResult(
-            self.name, JobStatus.SUCCESS,
-            "candidate promoted" if promoted else "candidate rejected; "
-            "incumbent retained",
+            self.name,
+            JobStatus.SUCCESS,
+            "candidate promoted" if promoted else "candidate rejected; incumbent retained",
             details={"promoted": promoted},
         )

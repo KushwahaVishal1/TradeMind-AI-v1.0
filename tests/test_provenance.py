@@ -24,8 +24,9 @@ def test_environment_hash_changes_with_package_versions():
 
 def test_a_dirty_tree_is_not_reproducible():
     """A commit recorded against uncommitted changes points at code that never ran."""
-    p = Provenance(git={"commit": "abc", "short_commit": "abc",
-                        "dirty": True, "dirty_files": 3})
+    p = Provenance(
+        git={"commit": "abc", "short_commit": "abc", "dirty": True, "dirty_files": 3}
+    )
     assert not p.reproducible
     assert any("uncommitted" in w for w in p.warnings())
 
@@ -48,8 +49,10 @@ def test_tracked_packages_are_reported():
 
 
 def test_missing_packages_are_flagged_not_hidden():
-    p = Provenance(packages={"numpy": "1.0", "duckdb": "not installed"},
-                   git={"commit": "a", "dirty": False})
+    p = Provenance(
+        packages={"numpy": "1.0", "duckdb": "not installed"},
+        git={"commit": "a", "dirty": False},
+    )
     assert any("duckdb" in w for w in p.warnings())
 
 
@@ -68,6 +71,7 @@ def test_render_includes_the_environment_hash():
 # The static gate must itself work
 # =====================================================================
 
+
 def test_codebase_has_no_forbidden_patterns():
     """Runs the CI gate in-process, so it fails locally before it fails in CI."""
     import subprocess
@@ -77,7 +81,8 @@ def test_codebase_has_no_forbidden_patterns():
     root = Path(__file__).resolve().parents[1]
     result = subprocess.run(
         [sys.executable, str(root / "scripts" / "check_forbidden_patterns.py")],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     assert result.returncode == 0, result.stdout
 
@@ -109,14 +114,13 @@ def test_the_checker_permits_grouped_ranks():
     import check_forbidden_patterns as checker
 
     source = 'def f(df):\n    return df.groupby("date")["x"].rank(pct=True)\n'
-    assert not checker.check_full_sample_statistics(
-        Path("x.py"), ast.parse(source)
-    )
+    assert not checker.check_full_sample_statistics(Path("x.py"), ast.parse(source))
 
 
 # =====================================================================
 # The final evaluation must be single-use
 # =====================================================================
+
 
 def test_final_evaluation_refuses_without_confirmation():
     """Unlocking the test set must be a deliberate act, not a default."""
@@ -127,7 +131,8 @@ def test_final_evaluation_refuses_without_confirmation():
     root = Path(__file__).resolve().parents[1]
     result = subprocess.run(
         [sys.executable, str(root / "scripts" / "final_evaluation.py")],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     assert result.returncode == 1
     assert "--confirm" in result.stderr + result.stdout
@@ -147,7 +152,7 @@ def test_no_fabricated_final_test_result_exists():
     report = root / "reports" / "final" / "TradeMind_AI_Final_Report.md"
 
     if evidence.exists():
-        return   # the evaluation has legitimately been run
+        return  # the evaluation has legitimately been run
 
     text = report.read_text(encoding="utf-8")
     assert "LOCKED. Not evaluated." in text, (
@@ -157,14 +162,13 @@ def test_no_fabricated_final_test_result_exists():
     # Checked against a surrounding window rather than a single line, because
     # prose wraps and the disclaimer often sits on the previous line.
     lines = text.splitlines()
-    markers = ("placeholder", "no such code", "recorded a", "never been written",
-               "fabricat")
+    markers = ("placeholder", "no such code", "recorded a", "never been written", "fabricat")
 
     for fabricated in ("+0.48%", "Sharpe 1.45"):
         for i, line in enumerate(lines):
             if fabricated not in line:
                 continue
-            context = " ".join(lines[max(0, i - 3): i + 4]).lower()
+            context = " ".join(lines[max(0, i - 3) : i + 4]).lower()
             assert any(m in context for m in markers), (
                 f"unexplained fabricated figure near line {i + 1}: {line.strip()}"
             )

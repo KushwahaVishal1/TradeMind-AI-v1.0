@@ -10,10 +10,8 @@ contamination trap described in ``base.py``.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
-import numpy as np
-import pandas as pd
 import pytest
 
 from trademind.orchestration.base import (
@@ -26,8 +24,6 @@ from trademind.orchestration.base import (
     reap_stale_runs,
 )
 from trademind.orchestration.daily_pipeline import (
-    MODES,
-    PipelineRun,
     build_jobs,
     run_pipeline,
 )
@@ -39,10 +35,10 @@ from trademind.orchestration.scheduler import (
 from trademind.storage import PredictionStore, init_db
 from trademind.storage.predictions import Prediction
 
-
 # =====================================================================
 # THE contamination guard
 # =====================================================================
+
 
 def test_backfill_with_the_current_model_is_refused():
     """A model trained through last month cannot have predicted last year.
@@ -81,6 +77,7 @@ def test_string_training_end_is_accepted():
 # =====================================================================
 # Idempotency (Phase 9 acceptance)
 # =====================================================================
+
 
 def make_prediction(**kw) -> Prediction:
     base = dict(
@@ -130,11 +127,21 @@ def test_a_new_model_version_coexists(tmp_path):
 # =====================================================================
 
 LINEAGE_FIELDS = [
-    "prediction_id", "symbol", "prediction_date", "execution_date",
-    "model_version", "feature_version", "decision_version",
-    "threshold_version", "training_start", "training_end",
-    "predicted_probability", "calibrated_probability", "predicted_return",
-    "signal", "run_id",
+    "prediction_id",
+    "symbol",
+    "prediction_date",
+    "execution_date",
+    "model_version",
+    "feature_version",
+    "decision_version",
+    "threshold_version",
+    "training_start",
+    "training_end",
+    "predicted_probability",
+    "calibrated_probability",
+    "predicted_return",
+    "signal",
+    "run_id",
 ]
 
 
@@ -156,14 +163,14 @@ def test_every_lineage_field_is_persisted(tmp_path):
 def test_a_prediction_traces_back_to_its_run(tmp_path):
     conn = init_db(tmp_path / "t.db")
     store = PredictionStore(conn)
-    run_id = store.start_run("daily", config_hash="cfg-hash-1",
-                             git_commit="abc1234")
+    run_id = store.start_run("daily", config_hash="cfg-hash-1", git_commit="abc1234")
     store.finish_run(run_id, "SUCCESS")
     pid = store.save(make_prediction(run_id=run_id))
 
     row = conn.execute(
         "SELECT r.config_hash, r.git_commit, r.mode FROM predictions p "
-        "JOIN runs r ON r.run_id = p.run_id WHERE p.prediction_id = ?", (pid,)
+        "JOIN runs r ON r.run_id = p.run_id WHERE p.prediction_id = ?",
+        (pid,),
     ).fetchone()
 
     assert row["config_hash"] == "cfg-hash-1"
@@ -175,6 +182,7 @@ def test_a_prediction_traces_back_to_its_run(tmp_path):
 # Outcome resolution
 # =====================================================================
 
+
 def test_outcomes_resolve_and_score(tmp_path):
     conn = init_db(tmp_path / "t.db")
     store = PredictionStore(conn)
@@ -184,9 +192,7 @@ def test_outcomes_resolve_and_score(tmp_path):
 
     row = store.get(pid)
     assert row["status"] == "RESOLVED"
-    outcome = conn.execute(
-        "SELECT * FROM outcomes WHERE prediction_id = ?", (pid,)
-    ).fetchone()
+    outcome = conn.execute("SELECT * FROM outcomes WHERE prediction_id = ?", (pid,)).fetchone()
     assert outcome["direction_correct"] == 1
     conn.close()
 
@@ -207,15 +213,17 @@ def test_pending_shrinks_as_outcomes_arrive(tmp_path):
 # Failure recovery
 # =====================================================================
 
+
 def test_abandoned_runs_are_reaped(tmp_path):
     """A killed process leaves RUNNING forever, which stacks scheduler runs."""
     conn = init_db(tmp_path / "t.db")
     store = PredictionStore(conn)
 
-    old = (datetime.now(timezone.utc) - timedelta(hours=12)).isoformat()
+    old = (datetime.now(UTC) - timedelta(hours=12)).isoformat()
     conn.execute(
         "INSERT INTO runs (run_id, mode, started_at, status, config_hash) "
-        "VALUES ('stale1', 'daily', ?, 'RUNNING', 'x')", (old,)
+        "VALUES ('stale1', 'daily', ?, 'RUNNING', 'x')",
+        (old,),
     )
     assert reap_stale_runs(store, hours=6) == 1
 
@@ -263,6 +271,7 @@ def test_job_duration_is_recorded():
 # =====================================================================
 # Pipeline wiring
 # =====================================================================
+
 
 class FakeConfig:
     """Minimal config stand-in."""
@@ -317,7 +326,7 @@ def test_pipeline_records_a_run_even_when_it_fails(tmp_path):
     cfg = FakeConfig(tmp_path)
 
     class Failing(Job):
-        name = "ingestion"     # critical, so the pipeline halts
+        name = "ingestion"  # critical, so the pipeline halts
 
         def execute(self, context):
             return JobResult(self.name, JobStatus.FAILED, "simulated")
@@ -339,7 +348,7 @@ def test_a_non_critical_failure_does_not_halt_the_pipeline(tmp_path):
     executed = []
 
     class Noisy(Job):
-        name = "monitoring"          # not critical
+        name = "monitoring"  # not critical
 
         def execute(self, context):
             executed.append(self.name)
@@ -355,7 +364,7 @@ def test_a_non_critical_failure_does_not_halt_the_pipeline(tmp_path):
     run = run_pipeline(cfg, mode="daily", jobs=[Noisy(), After()])
 
     assert executed == ["monitoring", "retraining"]
-    assert run.status == "FAILED"     # reported, but everything still ran
+    assert run.status == "FAILED"  # reported, but everything still ran
 
 
 def test_partial_ingestion_is_not_fatal(tmp_path):
@@ -384,8 +393,7 @@ def test_partial_ingestion_is_not_fatal(tmp_path):
 
 
 def test_context_carries_artifacts_between_jobs():
-    context = PipelineContext(cfg=None, mode="daily", run_id="r",
-                              as_of=date.today())
+    context = PipelineContext(cfg=None, mode="daily", run_id="r", as_of=date.today())
     context.put("panel", "data")
     assert context.get("panel") == "data"
     assert context.get("absent", "fallback") == "fallback"
@@ -408,13 +416,14 @@ def test_pipeline_render_lists_every_job(tmp_path):
 # Scheduling
 # =====================================================================
 
+
 def test_weekend_is_not_a_run_day():
-    ok, reason = should_run_today(date(2023, 6, 17))    # Saturday
+    ok, reason = should_run_today(date(2023, 6, 17))  # Saturday
     assert not ok and "not a trading session" in reason
 
 
 def test_weekday_is_a_run_day():
-    ok, _ = should_run_today(date(2023, 6, 15))         # Thursday
+    ok, _ = should_run_today(date(2023, 6, 15))  # Thursday
     assert ok
 
 

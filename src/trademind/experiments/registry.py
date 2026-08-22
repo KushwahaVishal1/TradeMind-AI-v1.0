@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pandas as pd
 
@@ -50,7 +50,7 @@ LEGAL_TRANSITIONS: dict[str, set[str]] = {
     Stage.VALIDATED: {Stage.STAGING, Stage.FAILED, Stage.ARCHIVED},
     Stage.STAGING: {Stage.PRODUCTION, Stage.FAILED, Stage.ARCHIVED},
     Stage.PRODUCTION: {Stage.ARCHIVED},
-    Stage.FAILED: set(),          # terminal, by design
+    Stage.FAILED: set(),  # terminal, by design
     Stage.ARCHIVED: set(),
 }
 
@@ -60,7 +60,7 @@ class IllegalTransition(RuntimeError):
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 @dataclass
@@ -98,9 +98,18 @@ class ModelLifecycle:
             "created_at, training_start, training_end, feature_version, "
             "artifact_path, metrics_json, notes) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (model_version, f"{task}:{model_type}", Stage.CANDIDATE, _now(),
-             training_start, training_end, feature_version, artifact_path,
-             json.dumps(metrics or {}), notes),
+            (
+                model_version,
+                f"{task}:{model_type}",
+                Stage.CANDIDATE,
+                _now(),
+                training_start,
+                training_end,
+                feature_version,
+                artifact_path,
+                json.dumps(metrics or {}),
+                notes,
+            ),
         )
         self._log_transition(model_version, None, Stage.CANDIDATE, "registered")
         return model_version
@@ -133,12 +142,12 @@ class ModelLifecycle:
 
         if to_stage not in allowed:
             detail = (
-                f"{current} is terminal" if not allowed
+                f"{current} is terminal"
+                if not allowed
                 else f"legal moves from {current} are {sorted(allowed)}"
             )
             raise IllegalTransition(
-                f"Cannot move {model_version} from {current} to {to_stage}: "
-                f"{detail}."
+                f"Cannot move {model_version} from {current} to {to_stage}: {detail}."
             )
 
         # One PRODUCTION model per task, enforced with the promotion itself.
@@ -146,10 +155,12 @@ class ModelLifecycle:
             self._archive_incumbent(row["model_type"], model_version)
 
         self.conn.execute(
-            "UPDATE model_registry SET stage = ?, promoted_at = ? "
-            "WHERE model_version = ?",
-            (to_stage, _now() if to_stage == Stage.PRODUCTION else row["promoted_at"],
-             model_version),
+            "UPDATE model_registry SET stage = ?, promoted_at = ? WHERE model_version = ?",
+            (
+                to_stage,
+                _now() if to_stage == Stage.PRODUCTION else row["promoted_at"],
+                model_version,
+            ),
         )
         self._log_transition(model_version, current, to_stage, reason, actor)
         log.info("%s: %s -> %s (%s)", model_version, current, to_stage, reason)
@@ -169,14 +180,20 @@ class ModelLifecycle:
                 (Stage.ARCHIVED, version),
             )
             self._log_transition(
-                version, Stage.PRODUCTION, Stage.ARCHIVED,
+                version,
+                Stage.PRODUCTION,
+                Stage.ARCHIVED,
                 f"superseded by {incoming}",
             )
             log.info("Archived incumbent %s", version)
 
     def _log_transition(
-        self, model_version: str, from_stage: str | None, to_stage: str,
-        reason: str = "", actor: str = "pipeline",
+        self,
+        model_version: str,
+        from_stage: str | None,
+        to_stage: str,
+        reason: str = "",
+        actor: str = "pipeline",
     ) -> None:
         self.conn.execute(
             "INSERT INTO registry_transitions (model_version, from_stage, "
@@ -203,16 +220,27 @@ class ModelLifecycle:
         return rows[0] if rows else None
 
     def history(self, model_version: str) -> pd.DataFrame:
-        return pd.DataFrame([dict(r) for r in self.conn.execute(
-            "SELECT * FROM registry_transitions WHERE model_version = ? "
-            "ORDER BY occurred_at", (model_version,),
-        )])
+        return pd.DataFrame(
+            [
+                dict(r)
+                for r in self.conn.execute(
+                    "SELECT * FROM registry_transitions WHERE model_version = ? "
+                    "ORDER BY occurred_at",
+                    (model_version,),
+                )
+            ]
+        )
 
     def summary(self) -> pd.DataFrame:
-        return pd.DataFrame([dict(r) for r in self.conn.execute(
-            "SELECT model_version, model_type, stage, created_at, promoted_at, "
-            "training_end FROM model_registry ORDER BY created_at DESC"
-        )])
+        return pd.DataFrame(
+            [
+                dict(r)
+                for r in self.conn.execute(
+                    "SELECT model_version, model_type, stage, created_at, promoted_at, "
+                    "training_end FROM model_registry ORDER BY created_at DESC"
+                )
+            ]
+        )
 
     def promote_through_validation(
         self, model_version: str, validation_outcome, actor: str = "pipeline"
@@ -227,8 +255,10 @@ class ModelLifecycle:
 
         if not validation_outcome.passed:
             self.transition(
-                model_version, Stage.FAILED,
-                f"failed: {', '.join(validation_outcome.failed_checks)}", actor,
+                model_version,
+                Stage.FAILED,
+                f"failed: {', '.join(validation_outcome.failed_checks)}",
+                actor,
             )
             return Stage.FAILED
 

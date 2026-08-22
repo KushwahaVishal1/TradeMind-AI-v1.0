@@ -99,7 +99,7 @@ def population_stability_index(
 
     edges = np.unique(np.quantile(ref, np.linspace(0, 1, n_bins + 1)))
     if len(edges) < 3:
-        return 0.0     # near-constant feature; no meaningful distribution
+        return 0.0  # near-constant feature; no meaningful distribution
     edges[0], edges[-1] = -np.inf, np.inf
 
     ref_counts, _ = np.histogram(ref, bins=edges)
@@ -167,19 +167,21 @@ def compute_drift(
             psi = population_stability_index(ref, cur, n_bins)
             ks_stat, ks_p = stats.ks_2samp(ref, cur)
 
-        results.append(DriftResult(
-            feature=feature,
-            psi=psi,
-            ks_statistic=float(ks_stat),
-            ks_pvalue=float(ks_p),
-            n_reference=len(ref),
-            n_current=len(cur),
-            reference_mean=float(ref.mean()) if len(ref) else float("nan"),
-            current_mean=float(cur.mean()) if len(cur) else float("nan"),
-            missing_rate_reference=float(1 - len(ref) / max(1, len(ref_all))),
-            missing_rate_current=float(1 - len(cur) / max(1, len(cur_all))),
-            insufficient_data=insufficient,
-        ))
+        results.append(
+            DriftResult(
+                feature=feature,
+                psi=psi,
+                ks_statistic=float(ks_stat),
+                ks_pvalue=float(ks_p),
+                n_reference=len(ref),
+                n_current=len(cur),
+                reference_mean=float(ref.mean()) if len(ref) else float("nan"),
+                current_mean=float(cur.mean()) if len(cur) else float("nan"),
+                missing_rate_reference=float(1 - len(ref) / max(1, len(ref_all))),
+                missing_rate_current=float(1 - len(cur) / max(1, len(cur_all))),
+                insufficient_data=insufficient,
+            )
+        )
 
     if not results:
         return pd.DataFrame()
@@ -188,9 +190,7 @@ def compute_drift(
     frame["severity"] = [r.severity for r in results]
 
     # FDR across the whole feature set, not per feature.
-    frame["ks_significant_fdr"] = benjamini_hochberg(
-        frame["ks_pvalue"].to_numpy()
-    )
+    frame["ks_significant_fdr"] = benjamini_hochberg(frame["ks_pvalue"].to_numpy())
     return frame.sort_values("psi", ascending=False).reset_index(drop=True)
 
 
@@ -212,9 +212,7 @@ class DriftTracker:
         if drift.empty:
             return []
 
-        breaching = set(
-            drift.loc[drift["psi"] >= self.psi_threshold, "feature"]
-        )
+        breaching = set(drift.loc[drift["psi"] >= self.psi_threshold, "feature"])
         for feature in drift["feature"]:
             if feature in breaching:
                 self._streaks[feature] = self._streaks.get(feature, 0) + 1
@@ -222,13 +220,14 @@ class DriftTracker:
                 self._streaks[feature] = 0
 
         confirmed = [
-            f for f, streak in self._streaks.items()
-            if streak >= self.persistence_days
+            f for f, streak in self._streaks.items() if streak >= self.persistence_days
         ]
         if confirmed:
             log.warning(
                 "Persistent drift in %d feature(s) over %d consecutive checks: %s",
-                len(confirmed), self.persistence_days, confirmed[:5],
+                len(confirmed),
+                self.persistence_days,
+                confirmed[:5],
             )
         return sorted(confirmed)
 
@@ -256,5 +255,6 @@ def summarise_drift(drift: pd.DataFrame) -> dict[str, float]:
         "n_ks_naive": float((measurable["ks_pvalue"] < 0.05).sum()),
         "n_ks_fdr": float(measurable["ks_significant_fdr"].sum()),
         "max_missing_rate": float(measurable["missing_rate_current"].max())
-        if len(measurable) else float("nan"),
+        if len(measurable)
+        else float("nan"),
     }

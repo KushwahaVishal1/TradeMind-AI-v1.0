@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import streamlit as st
+from components.render import empty_state, render_panel
 
 from trademind.reporting import build_skill_panel
-
-from components.render import empty_state, render_panel
 
 
 def render(state, cfg, store) -> None:
@@ -16,10 +15,14 @@ def render(state, cfg, store) -> None:
         empty_state("No evaluated model yet.", "python main.py train")
         return
 
-    render_panel(build_skill_panel(
-        state.get("auc"), state.get("auc_stderr"),
-        state.get("majority_accuracy"), state.get("accuracy"),
-    ))
+    render_panel(
+        build_skill_panel(
+            state.get("auc"),
+            state.get("auc_stderr"),
+            state.get("majority_accuracy"),
+            state.get("accuracy"),
+        )
+    )
 
     resolved = state.get("resolved")
     if resolved is not None and not resolved.empty:
@@ -35,9 +38,7 @@ def render(state, cfg, store) -> None:
         )
         if not table.empty:
             st.dataframe(table, use_container_width=True)
-            st.line_chart(
-                table.set_index("mean_predicted")[["observed_frequency"]]
-            )
+            st.line_chart(table.set_index("mean_predicted")[["observed_frequency"]])
 
     st.subheader("Expected range")
     st.caption(

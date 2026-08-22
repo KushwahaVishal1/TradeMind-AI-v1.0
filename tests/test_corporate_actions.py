@@ -25,20 +25,25 @@ def frame(closes, splits=None, divs=None, start="2023-01-02"):
     n = len(closes)
     dates = pd.bdate_range(start, periods=n)
     closes = np.asarray(closes, dtype=float)
-    return pd.DataFrame({
-        "date": dates,
-        "symbol": "TEST.NS",
-        "open_split": closes,
-        "high_split": closes * 1.01,
-        "low_split": closes * 0.99,
-        "close_split": closes,
-        "volume": np.full(n, 100_000, dtype="int64"),
-        "dividend": np.asarray(divs if divs is not None else [0.0] * n, dtype=float),
-        "split_ratio": np.asarray(splits if splits is not None else [1.0] * n, dtype=float),
-    })
+    return pd.DataFrame(
+        {
+            "date": dates,
+            "symbol": "TEST.NS",
+            "open_split": closes,
+            "high_split": closes * 1.01,
+            "low_split": closes * 0.99,
+            "close_split": closes,
+            "volume": np.full(n, 100_000, dtype="int64"),
+            "dividend": np.asarray(divs if divs is not None else [0.0] * n, dtype=float),
+            "split_ratio": np.asarray(
+                splits if splits is not None else [1.0] * n, dtype=float
+            ),
+        }
+    )
 
 
 # -- THE invariant -------------------------------------------------------
+
 
 def test_split_preserves_position_value():
     """100 x 1000 == 200 x 500. The number this whole module exists for."""
@@ -68,6 +73,7 @@ def test_split_ratio_must_be_positive():
 
 # -- split factor --------------------------------------------------------
 
+
 def test_cumulative_factor_excludes_own_row():
     """The ex-date already trades post-split, so its own ratio must not apply."""
     ratios = pd.Series([1.0, 1.0, 2.0, 1.0, 1.0])
@@ -88,10 +94,10 @@ def test_no_splits_gives_unit_factor():
 
 # -- raw reconstruction --------------------------------------------------
 
+
 def test_raw_prices_recover_pre_split_levels():
     """Provider shows a continuous 500-ish series; as-traded was 1000 then 500."""
-    df = frame([500.0, 500.0, 500.0, 500.0],
-               splits=[1.0, 1.0, 2.0, 1.0])
+    df = frame([500.0, 500.0, 500.0, 500.0], splits=[1.0, 1.0, 2.0, 1.0])
     out = reconstruct_raw(df)
 
     assert list(out["close_raw"]) == [1000.0, 1000.0, 500.0, 500.0]
@@ -131,6 +137,7 @@ def test_negative_dividend_rejected():
 
 # -- total return series -------------------------------------------------
 
+
 def test_adj_close_equals_close_when_no_dividends():
     df = frame([100.0, 102.0, 101.0])
     out = compute_adj_close(df)
@@ -163,9 +170,9 @@ def test_total_return_captures_the_dividend():
 
 # -- combined ------------------------------------------------------------
 
+
 def test_pipeline_produces_all_three_series():
-    df = frame([500.0] * 5, splits=[1.0, 1.0, 2.0, 1.0, 1.0],
-               divs=[0.0, 0.0, 0.0, 0.0, 5.0])
+    df = frame([500.0] * 5, splits=[1.0, 1.0, 2.0, 1.0, 1.0], divs=[0.0, 0.0, 0.0, 0.0, 5.0])
     out = apply_corporate_actions(df)
 
     for col in ("close_raw", "close_split", "adj_close"):

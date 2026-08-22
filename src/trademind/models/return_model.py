@@ -37,29 +37,39 @@ class ReturnModel(BaseModel):
             # collinear -- several return horizons, several volatility
             # estimators -- and unregularised coefficients would be unstable
             # across folds even where predictions were not.
-            return Pipeline([
-                ("impute", make_imputer()),
-                ("scale", StandardScaler()),
-                ("model", Ridge(
-                    alpha=params.get("alpha", 10.0),
-                    random_state=RANDOM_STATE,
-                )),
-            ])
+            return Pipeline(
+                [
+                    ("impute", make_imputer()),
+                    ("scale", StandardScaler()),
+                    (
+                        "model",
+                        Ridge(
+                            alpha=params.get("alpha", 10.0),
+                            random_state=RANDOM_STATE,
+                        ),
+                    ),
+                ]
+            )
 
         if kind == "hgb":
-            return Pipeline([
-                ("model", HistGradientBoostingRegressor(
-                    max_depth=params.get("max_depth", 3),
-                    max_iter=params.get("max_iter", 200),
-                    learning_rate=params.get("learning_rate", 0.03),
-                    min_samples_leaf=params.get("min_samples_leaf", 200),
-                    l2_regularization=params.get("l2_regularization", 1.0),
-                    max_leaf_nodes=params.get("max_leaf_nodes", 15),
-                    loss=params.get("loss", "squared_error"),
-                    early_stopping=False,
-                    random_state=RANDOM_STATE,
-                )),
-            ])
+            return Pipeline(
+                [
+                    (
+                        "model",
+                        HistGradientBoostingRegressor(
+                            max_depth=params.get("max_depth", 3),
+                            max_iter=params.get("max_iter", 200),
+                            learning_rate=params.get("learning_rate", 0.03),
+                            min_samples_leaf=params.get("min_samples_leaf", 200),
+                            l2_regularization=params.get("l2_regularization", 1.0),
+                            max_leaf_nodes=params.get("max_leaf_nodes", 15),
+                            loss=params.get("loss", "squared_error"),
+                            early_stopping=False,
+                            random_state=RANDOM_STATE,
+                        ),
+                    ),
+                ]
+            )
 
         raise ValueError(f"Unknown return estimator: {kind}")
 
@@ -69,14 +79,24 @@ class ReturnModel(BaseModel):
 
 
 def ridge_return(feature_version: str = "f1", **params) -> ReturnModel:
-    return ReturnModel(ModelSpec(
-        name="return_ridge", task="return", estimator="ridge",
-        params=params, feature_version=feature_version,
-    ))
+    return ReturnModel(
+        ModelSpec(
+            name="return_ridge",
+            task="return",
+            estimator="ridge",
+            params=params,
+            feature_version=feature_version,
+        )
+    )
 
 
 def hgb_return(feature_version: str = "f1", **params) -> ReturnModel:
-    return ReturnModel(ModelSpec(
-        name="return_hgb", task="return", estimator="hgb",
-        params=params, feature_version=feature_version,
-    ))
+    return ReturnModel(
+        ModelSpec(
+            name="return_hgb",
+            task="return",
+            estimator="hgb",
+            params=params,
+            feature_version=feature_version,
+        )
+    )

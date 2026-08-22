@@ -47,19 +47,17 @@ def rsi(series: pd.Series, window: int = 14) -> pd.Series:
     return out.where(avg_loss != 0.0, 100.0).where(avg_gain.notna())
 
 
-def macd(
-    series: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9
-) -> pd.DataFrame:
+def macd(series: pd.Series, fast: int = 12, slow: int = 26, signal: int = 9) -> pd.DataFrame:
     """MACD line, signal line, and histogram."""
     macd_line = ema(series, fast) - ema(series, slow)
-    signal_line = macd_line.ewm(
-        span=signal, adjust=False, min_periods=signal
-    ).mean()
-    return pd.DataFrame({
-        "macd": macd_line,
-        "macd_signal": signal_line,
-        "macd_hist": macd_line - signal_line,
-    })
+    signal_line = macd_line.ewm(span=signal, adjust=False, min_periods=signal).mean()
+    return pd.DataFrame(
+        {
+            "macd": macd_line,
+            "macd_signal": signal_line,
+            "macd_hist": macd_line - signal_line,
+        }
+    )
 
 
 def bollinger(series: pd.Series, window: int = 20, num_std: float = 2.0) -> pd.DataFrame:
@@ -75,31 +73,37 @@ def bollinger(series: pd.Series, window: int = 20, num_std: float = 2.0) -> pd.D
     lower = mid - num_std * std
     span = (upper - lower).replace(0.0, np.nan)
 
-    return pd.DataFrame({
-        "bb_width": (upper - lower) / mid.replace(0.0, np.nan),
-        # 0 at the lower band, 1 at the upper.
-        "bb_position": (series - lower) / span,
-    })
+    return pd.DataFrame(
+        {
+            "bb_width": (upper - lower) / mid.replace(0.0, np.nan),
+            # 0 at the lower band, 1 at the upper.
+            "bb_position": (series - lower) / span,
+        }
+    )
 
 
 def true_range(high: pd.Series, low: pd.Series, close: pd.Series) -> pd.Series:
     prev_close = close.shift(1)
-    return pd.concat([
-        high - low,
-        (high - prev_close).abs(),
-        (low - prev_close).abs(),
-    ], axis=1).max(axis=1)
+    return pd.concat(
+        [
+            high - low,
+            (high - prev_close).abs(),
+            (low - prev_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
 
 
 def atr(high: pd.Series, low: pd.Series, close: pd.Series, window: int = 14) -> pd.Series:
     """Average True Range, Wilder-smoothed."""
-    return true_range(high, low, close).ewm(
-        alpha=1 / window, adjust=False, min_periods=window
-    ).mean()
+    return (
+        true_range(high, low, close)
+        .ewm(alpha=1 / window, adjust=False, min_periods=window)
+        .mean()
+    )
 
 
-def atr_pct(high: pd.Series, low: pd.Series, close: pd.Series,
-            window: int = 14) -> pd.Series:
+def atr_pct(high: pd.Series, low: pd.Series, close: pd.Series, window: int = 14) -> pd.Series:
     """ATR as a fraction of price, so it is comparable across symbols."""
     return atr(high, low, close, window) / close.replace(0.0, np.nan)
 

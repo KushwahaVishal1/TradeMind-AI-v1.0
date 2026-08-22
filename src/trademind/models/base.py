@@ -33,8 +33,9 @@ import hashlib
 import json
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
-from typing import Any, Sequence
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -53,8 +54,8 @@ class ModelSpec:
     """
 
     name: str
-    task: str                      # "direction" | "return"
-    estimator: str                 # registered factory key
+    task: str  # "direction" | "return"
+    estimator: str  # registered factory key
     params: dict[str, Any] = field(default_factory=dict)
     feature_version: str = "f1"
 
@@ -161,9 +162,16 @@ class BaseModel(ABC):
 
         if len(values) != len(self.feature_names_):
             return None
-        return pd.DataFrame({
-            "feature": self.feature_names_, "importance": values,
-        }).sort_values("importance", ascending=False).reset_index(drop=True)
+        return (
+            pd.DataFrame(
+                {
+                    "feature": self.feature_names_,
+                    "importance": values,
+                }
+            )
+            .sort_values("importance", ascending=False)
+            .reset_index(drop=True)
+        )
 
     def permutation_importance(
         self,
@@ -191,14 +199,24 @@ class BaseModel(ABC):
         X = self._check_fitted(X)
         mask = y.notna().to_numpy()
         result = sk_perm(
-            self.pipeline, X.loc[mask], y.loc[mask],
-            n_repeats=n_repeats, random_state=RANDOM_STATE, scoring=scoring,
+            self.pipeline,
+            X.loc[mask],
+            y.loc[mask],
+            n_repeats=n_repeats,
+            random_state=RANDOM_STATE,
+            scoring=scoring,
         )
-        return pd.DataFrame({
-            "feature": self.feature_names_,
-            "importance": result.importances_mean,
-            "importance_std": result.importances_std,
-        }).sort_values("importance", ascending=False).reset_index(drop=True)
+        return (
+            pd.DataFrame(
+                {
+                    "feature": self.feature_names_,
+                    "importance": result.importances_mean,
+                    "importance_std": result.importances_std,
+                }
+            )
+            .sort_values("importance", ascending=False)
+            .reset_index(drop=True)
+        )
 
     def metadata(self) -> dict:
         return {
@@ -228,9 +246,7 @@ def make_imputer():
     return SimpleImputer(strategy="median")
 
 
-def select_features(
-    panel: pd.DataFrame, feature_cols: Sequence[str]
-) -> pd.DataFrame:
+def select_features(panel: pd.DataFrame, feature_cols: Sequence[str]) -> pd.DataFrame:
     """Extract the feature matrix, failing loudly on absent columns."""
     missing = [c for c in feature_cols if c not in panel.columns]
     if missing:

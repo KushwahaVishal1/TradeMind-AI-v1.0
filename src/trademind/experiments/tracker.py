@@ -36,7 +36,6 @@ The only clean answer remains the locked final test, used once.
 
 from __future__ import annotations
 
-import json
 import logging
 from dataclasses import dataclass
 
@@ -111,13 +110,16 @@ class ExperimentTracker:
         if gaps:
             log.warning(
                 "Experiment %s is not fully reproducible: %s",
-                run.experiment_id, "; ".join(gaps),
+                run.experiment_id,
+                "; ".join(gaps),
             )
         log.info(
             "Logged %s (%s=%s), experiment #%d for task '%s'",
-            run.name, run.primary_metric,
+            run.name,
+            run.primary_metric,
             f"{run.primary_value:.4f}" if run.primary_value is not None else "n/a",
-            run.n_prior_experiments + 1, run.task,
+            run.n_prior_experiments + 1,
+            run.task,
         )
         return run.experiment_id
 
@@ -174,19 +176,24 @@ class ExperimentTracker:
         n = len(runs)
         inflation = selection_inflation(n, metric_stderr)
 
-        frame = pd.DataFrame([{
-            "experiment_id": r.experiment_id,
-            "name": r.name,
-            "task": r.task,
-            "model_type": r.model_type,
-            "metric": r.primary_metric,
-            "observed": r.primary_value,
-            "selection_adjusted": (
-                r.primary_value - inflation if r.primary_value is not None else None
-            ),
-            "reproducible": r.reproducible,
-            "created_at": r.created_at,
-        } for r in runs])
+        frame = pd.DataFrame(
+            [
+                {
+                    "experiment_id": r.experiment_id,
+                    "name": r.name,
+                    "task": r.task,
+                    "model_type": r.model_type,
+                    "metric": r.primary_metric,
+                    "observed": r.primary_value,
+                    "selection_adjusted": (
+                        r.primary_value - inflation if r.primary_value is not None else None
+                    ),
+                    "reproducible": r.reproducible,
+                    "created_at": r.created_at,
+                }
+                for r in runs
+            ]
+        )
 
         return frame.sort_values("observed", ascending=False).reset_index(drop=True)
 
@@ -212,7 +219,6 @@ class ExperimentTracker:
         ]
         if n_irreproducible:
             lines.append(
-                f"  WARNING: {n_irreproducible} experiment(s) are not fully "
-                "reproducible."
+                f"  WARNING: {n_irreproducible} experiment(s) are not fully reproducible."
             )
         return "\n".join(lines)

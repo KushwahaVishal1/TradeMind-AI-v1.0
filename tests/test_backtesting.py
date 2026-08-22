@@ -23,9 +23,9 @@ from trademind.backtesting.execution import (
     size_order,
 )
 from trademind.backtesting.portfolio import (
+    RECONCILE_TOLERANCE,
     Portfolio,
     ReconciliationError,
-    RECONCILE_TOLERANCE,
 )
 from trademind.backtesting.report import (
     max_drawdown,
@@ -44,6 +44,7 @@ D2 = date(2023, 6, 16)
 # =====================================================================
 # Dual-path reconciliation
 # =====================================================================
+
 
 def test_fresh_portfolio_reconciles():
     p = Portfolio(1_000_000.0)
@@ -80,7 +81,7 @@ def test_uncharged_commission_is_caught():
     costs = compute_costs(100_000.0, CONFIG.costs)
     p.buy("A", 100, 1000.0, costs, D1)
 
-    p.total_costs = type(costs)()      # wipe the accumulator
+    p.total_costs = type(costs)()  # wipe the accumulator
 
     with pytest.raises(ReconciliationError, match="mismatch"):
         p.reconcile({"A": 1000.0}, D1)
@@ -89,7 +90,7 @@ def test_uncharged_commission_is_caught():
 def test_unrecorded_dividend_is_caught():
     p = Portfolio(1_000_000.0)
     p.buy("A", 100, 1000.0, compute_costs(100_000.0, CONFIG.costs), D1)
-    p.cash += 5000.0                   # cash credited, accumulator not
+    p.cash += 5000.0  # cash credited, accumulator not
 
     with pytest.raises(ReconciliationError):
         p.reconcile({"A": 1000.0}, D1)
@@ -98,7 +99,7 @@ def test_unrecorded_dividend_is_caught():
 def test_phantom_shares_are_caught():
     p = Portfolio(1_000_000.0)
     p.buy("A", 100, 1000.0, compute_costs(100_000.0, CONFIG.costs), D1)
-    p.holdings["A"].shares = 150.0     # shares appear from nowhere
+    p.holdings["A"].shares = 150.0  # shares appear from nowhere
 
     with pytest.raises(ReconciliationError):
         p.reconcile({"A": 1000.0}, D1)
@@ -108,6 +109,7 @@ def test_phantom_shares_are_caught():
 # Corporate actions
 # =====================================================================
 
+
 def test_split_preserves_wealth_end_to_end():
     """The ₹100,000 invariant, through the portfolio rather than in isolation."""
     p = Portfolio(1_000_000.0)
@@ -115,7 +117,7 @@ def test_split_preserves_wealth_end_to_end():
 
     before = p.equity_balance_sheet({"A": 1000.0})
     p.apply_split("A", 2.0, D2)
-    after = p.equity_balance_sheet({"A": 500.0})   # price halves with the split
+    after = p.equity_balance_sheet({"A": 500.0})  # price halves with the split
 
     assert after == pytest.approx(before)
     assert p.holdings["A"].shares == 200.0
@@ -166,6 +168,7 @@ def test_dividend_on_a_flat_position_pays_nothing():
 # Trade accounting
 # =====================================================================
 
+
 def test_cost_basis_is_the_weighted_average():
     p = Portfolio(1_000_000.0)
     p.buy("A", 100, 1000.0, compute_costs(100_000.0, FREE.costs), D1)
@@ -207,6 +210,7 @@ def test_costs_are_itemised():
 # =====================================================================
 # Execution timing
 # =====================================================================
+
 
 def test_same_session_execution_is_refused():
     """The t -> t+1 rule, enforced rather than assumed."""
@@ -285,6 +289,7 @@ def test_zero_price_is_refused():
 # Engine
 # =====================================================================
 
+
 def make_panel(n=200, symbols=("A", "B"), seed=0, split_at=None):
     rng = np.random.default_rng(seed)
     dates = pd.bdate_range("2023-01-02", periods=n)
@@ -295,22 +300,31 @@ def make_panel(n=200, symbols=("A", "B"), seed=0, split_at=None):
         if split_at is not None:
             splits[split_at] = 2.0
             close[split_at:] /= 2.0
-        rows.append(pd.DataFrame({
-            "date": dates, "symbol": s,
-            "open_raw": close * (1 + rng.normal(0, 0.002, n)),
-            "close_raw": close,
-            "volatility_20": np.full(n, 0.25),
-            "split_ratio": splits,
-            "dividend": np.zeros(n),
-        }))
+        rows.append(
+            pd.DataFrame(
+                {
+                    "date": dates,
+                    "symbol": s,
+                    "open_raw": close * (1 + rng.normal(0, 0.002, n)),
+                    "close_raw": close,
+                    "volatility_20": np.full(n, 0.25),
+                    "split_ratio": splits,
+                    "dividend": np.zeros(n),
+                }
+            )
+        )
     return pd.concat(rows).sort_values(["date", "symbol"]).reset_index(drop=True)
 
 
 def make_signals(panel, prob=0.60, expected=0.02):
-    return pd.DataFrame({
-        "date": panel["date"], "symbol": panel["symbol"],
-        "calibrated": prob, "expected_return": expected,
-    })
+    return pd.DataFrame(
+        {
+            "date": panel["date"],
+            "symbol": panel["symbol"],
+            "calibrated": prob,
+            "expected_return": expected,
+        }
+    )
 
 
 def engine(buy=0.55, sell=0.45, floor=0.0039):
@@ -336,8 +350,7 @@ def test_engine_survives_a_split():
 
 def test_no_signal_means_no_trades():
     panel = make_panel(n=100)
-    result = run_backtest(panel, pd.DataFrame(columns=["date", "symbol"]),
-                          engine(), CONFIG)
+    result = run_backtest(panel, pd.DataFrame(columns=["date", "symbol"]), engine(), CONFIG)
     assert result.trades.empty
     assert result.final_equity == pytest.approx(CONFIG.initial_capital)
 
@@ -362,13 +375,15 @@ def test_costs_reduce_the_return():
 
 def test_missing_panel_columns_are_rejected():
     with pytest.raises(ValueError, match="lacks required"):
-        run_backtest(pd.DataFrame({"date": [], "symbol": []}),
-                     pd.DataFrame(), engine(), CONFIG)
+        run_backtest(
+            pd.DataFrame({"date": [], "symbol": []}), pd.DataFrame(), engine(), CONFIG
+        )
 
 
 # =====================================================================
 # Benchmarks
 # =====================================================================
+
 
 def test_buy_and_hold_pays_costs_too():
     """A cost-free benchmark against a cost-charged strategy is not a comparison."""
@@ -401,6 +416,7 @@ def test_rebalanced_benchmark_trades_more_than_buy_and_hold():
 # Reporting
 # =====================================================================
 
+
 def test_drawdown_is_measured_from_the_running_peak():
     equity = pd.Series([100.0, 120.0, 90.0, 130.0])
     depth, _ = max_drawdown(equity)
@@ -417,21 +433,27 @@ def test_sharpe_of_a_constant_series_is_zero():
 
 def test_short_samples_are_flagged_as_unreliable():
     """A one-year Sharpe has a standard error near 1.0. Say so."""
-    curve = pd.DataFrame({
-        "date": pd.bdate_range("2023-01-02", periods=200),
-        "equity": np.linspace(1_000_000, 1_100_000, 200),
-        "exposure": 0.5, "total_costs": 5000.0,
-    })
+    curve = pd.DataFrame(
+        {
+            "date": pd.bdate_range("2023-01-02", periods=200),
+            "equity": np.linspace(1_000_000, 1_100_000, 200),
+            "exposure": 0.5,
+            "total_costs": 5000.0,
+        }
+    )
     text = render_report(performance_metrics(curve))
     assert "too short to estimate Sharpe reliably" in text
 
 
 def test_report_states_the_gross_return_needed_to_break_even():
-    curve = pd.DataFrame({
-        "date": pd.bdate_range("2023-01-02", periods=300),
-        "equity": np.linspace(1_000_000, 1_010_000, 300),
-        "exposure": 0.5, "total_costs": 26_000.0,
-    })
+    curve = pd.DataFrame(
+        {
+            "date": pd.bdate_range("2023-01-02", periods=300),
+            "equity": np.linspace(1_000_000, 1_010_000, 300),
+            "exposure": 0.5,
+            "total_costs": 26_000.0,
+        }
+    )
     m = performance_metrics(curve, initial_capital=1_000_000.0)
 
     assert m["cost_drag"] == pytest.approx(0.026)
@@ -439,17 +461,25 @@ def test_report_states_the_gross_return_needed_to_break_even():
 
 
 def test_turnover_is_annualised():
-    curve = pd.DataFrame({
-        "date": pd.bdate_range("2023-01-02", periods=252),
-        "equity": np.linspace(1_000_000, 1_000_000, 252),
-        "exposure": 0.5, "total_costs": 1000.0,
-    })
-    trades = pd.DataFrame({
-        "side": ["BUY", "SELL"], "notional": [500_000.0, 500_000.0],
-        "total_cost": [500.0, 500.0], "realised_pnl": [0.0, 1000.0],
-        "commission": [100.0, 100.0], "spread": [200.0, 200.0],
-        "slippage": [200.0, 200.0],
-    })
+    curve = pd.DataFrame(
+        {
+            "date": pd.bdate_range("2023-01-02", periods=252),
+            "equity": np.linspace(1_000_000, 1_000_000, 252),
+            "exposure": 0.5,
+            "total_costs": 1000.0,
+        }
+    )
+    trades = pd.DataFrame(
+        {
+            "side": ["BUY", "SELL"],
+            "notional": [500_000.0, 500_000.0],
+            "total_cost": [500.0, 500.0],
+            "realised_pnl": [0.0, 1000.0],
+            "commission": [100.0, 100.0],
+            "spread": [200.0, 200.0],
+            "slippage": [200.0, 200.0],
+        }
+    )
     m = performance_metrics(curve, trades, initial_capital=1_000_000.0)
     assert m["annual_turnover"] == pytest.approx(1.0, rel=0.05)
 

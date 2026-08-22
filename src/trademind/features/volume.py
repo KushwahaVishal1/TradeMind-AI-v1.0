@@ -49,9 +49,8 @@ def build(df: pd.DataFrame) -> pd.DataFrame:
     # Volume-weighted direction: are up days trading heavier than down days?
     ret = close.pct_change()
     signed = np.sign(ret) * volume
-    out["volume_direction_20"] = (
-        signed.rolling(20, min_periods=20).sum()
-        / volume.rolling(20, min_periods=20).sum().replace(0.0, np.nan)
-    )
+    out["volume_direction_20"] = signed.rolling(20, min_periods=20).sum() / volume.rolling(
+        20, min_periods=20
+    ).sum().replace(0.0, np.nan)
 
     return out

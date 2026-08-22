@@ -83,7 +83,8 @@ class RiskEngine:
         """Return a rejection Decision, or None if the input passes."""
         if inp.data_age_sessions > self.max_data_age_sessions:
             return preserve_position(
-                inp, RejectReason.STALE_DATA,
+                inp,
+                RejectReason.STALE_DATA,
                 f"Latest bar is {inp.data_age_sessions} sessions old "
                 f"(limit {self.max_data_age_sessions}); features describe a "
                 "market that has moved on.",
@@ -91,7 +92,8 @@ class RiskEngine:
 
         if not inp.features_complete:
             return preserve_position(
-                inp, RejectReason.MISSING_FEATURES,
+                inp,
+                RejectReason.MISSING_FEATURES,
                 "Feature row is incomplete; the model would be extrapolating "
                 "from imputed values.",
             )
@@ -100,17 +102,16 @@ class RiskEngine:
             inp.calibrated_probability
         ):
             return preserve_position(
-                inp, RejectReason.MISSING_PROBABILITY,
+                inp,
+                RejectReason.MISSING_PROBABILITY,
                 "Calibrated probability is not finite.",
             )
 
         # Position cap: blocks new entries only.
-        if (
-            inp.current_position.is_flat
-            and inp.n_open_positions >= self.max_positions
-        ):
+        if inp.current_position.is_flat and inp.n_open_positions >= self.max_positions:
             return preserve_position(
-                inp, RejectReason.POSITION_LIMIT,
+                inp,
+                RejectReason.POSITION_LIMIT,
                 f"Already holding {inp.n_open_positions} positions "
                 f"(limit {self.max_positions}); no new entries.",
             )

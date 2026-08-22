@@ -9,10 +9,9 @@ lists only trades.
 from __future__ import annotations
 
 import streamlit as st
+from components.render import empty_state
 
 from trademind.reporting import build_signals_table, signal_counts
-
-from components.render import empty_state
 
 
 def render(state, cfg, store) -> None:
@@ -45,9 +44,20 @@ def render(state, cfg, store) -> None:
         "`training_end` is not strictly before its `prediction_date` is "
         "rejected at write time."
     )
-    lineage = [c for c in (
-        "symbol", "prediction_date", "execution_date", "model_version",
-        "feature_version", "decision_version", "threshold_version",
-        "training_start", "training_end", "run_id",
-    ) if c in predictions.columns]
+    lineage = [
+        c
+        for c in (
+            "symbol",
+            "prediction_date",
+            "execution_date",
+            "model_version",
+            "feature_version",
+            "decision_version",
+            "threshold_version",
+            "training_start",
+            "training_end",
+            "run_id",
+        )
+        if c in predictions.columns
+    ]
     st.dataframe(predictions[lineage].head(50), use_container_width=True)

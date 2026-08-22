@@ -105,9 +105,7 @@ def load_config(
     """Load ``config.yaml`` and ``universe.yaml`` into a frozen Config."""
     root = _project_root()
     config_path = Path(config_path) if config_path else root / "config" / "config.yaml"
-    universe_path = (
-        Path(universe_path) if universe_path else root / "config" / "universe.yaml"
-    )
+    universe_path = Path(universe_path) if universe_path else root / "config" / "universe.yaml"
 
     for p in (config_path, universe_path):
         if not p.exists():

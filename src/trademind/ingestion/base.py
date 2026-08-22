@@ -43,8 +43,8 @@ and logs the rest.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from datetime import date
-from typing import Sequence
 
 import pandas as pd
 
@@ -71,10 +71,16 @@ DERIVED_COLUMNS: tuple[str, ...] = (
 )
 
 PRICE_COLUMNS_SPLIT: tuple[str, ...] = (
-    "open_split", "high_split", "low_split", "close_split",
+    "open_split",
+    "high_split",
+    "low_split",
+    "close_split",
 )
 PRICE_COLUMNS_RAW: tuple[str, ...] = (
-    "open_raw", "high_raw", "low_raw", "close_raw",
+    "open_raw",
+    "high_raw",
+    "low_raw",
+    "close_raw",
 )
 
 

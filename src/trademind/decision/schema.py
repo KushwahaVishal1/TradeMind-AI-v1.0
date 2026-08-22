@@ -133,9 +133,7 @@ class Decision:
         }
 
 
-def preserve_position(
-    inp: DecisionInput, reason: RejectReason, detail: str = ""
-) -> Decision:
+def preserve_position(inp: DecisionInput, reason: RejectReason, detail: str = "") -> Decision:
     """The safe fallback: hold whatever is currently held.
 
     Every rejection path routes through here, so the "do nothing on error"
@@ -147,9 +145,7 @@ def preserve_position(
         signal=Signal.HOLD,
         calibrated_probability=inp.calibrated_probability,
         expected_return=inp.expected_return,
-        target_weight=(
-            0.0 if inp.current_position.is_flat else float("nan")
-        ),
+        target_weight=(0.0 if inp.current_position.is_flat else float("nan")),
         rejected=True,
         reject_reason=reason,
         rationale=detail or f"Rejected ({reason.value}); position preserved.",

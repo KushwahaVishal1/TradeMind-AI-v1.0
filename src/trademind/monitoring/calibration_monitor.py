@@ -75,15 +75,18 @@ def monitor_calibration(
         n = len(window)
 
         reportable = n >= min_observations
-        out.append(CalibrationWindow(
-            window_days=days,
-            n_observations=n,
-            reportable=reportable,
-            metrics=(
-                calibration_metrics(window[outcome_col], window[prob_col])
-                if reportable else {}
-            ),
-        ))
+        out.append(
+            CalibrationWindow(
+                window_days=days,
+                n_observations=n,
+                reportable=reportable,
+                metrics=(
+                    calibration_metrics(window[outcome_col], window[prob_col])
+                    if reportable
+                    else {}
+                ),
+            )
+        )
     return out
 
 

@@ -36,11 +36,18 @@ def conn(tmp_path):
 
 def make_run(name="exp", task="direction", auc=0.52, **kw) -> ExperimentRun:
     base = dict(
-        name=name, task=task, model_type="hgb",
+        name=name,
+        task=task,
+        model_type="hgb",
         hyperparameters={"max_depth": 3},
-        config_hash="cfg1", dataset_version="d1", feature_version="f1",
-        random_seed=42, training_start="2018-01-01", training_end="2022-12-31",
-        n_training_rows=5000, n_features=45,
+        config_hash="cfg1",
+        dataset_version="d1",
+        feature_version="f1",
+        random_seed=42,
+        training_start="2018-01-01",
+        training_end="2022-12-31",
+        n_training_rows=5000,
+        n_features=45,
         metrics={"roc_auc": auc, "brier": 0.25},
     )
     base.update(kw)
@@ -53,6 +60,7 @@ def make_run(name="exp", task="direction", auc=0.52, **kw) -> ExperimentRun:
 # =====================================================================
 # THE selection-inflation finding
 # =====================================================================
+
 
 def test_selection_inflation_grows_with_experiment_count():
     assert selection_inflation(1) == 0.0
@@ -118,6 +126,7 @@ def test_summary_states_the_adjusted_estimate(conn):
 # Reproducibility
 # =====================================================================
 
+
 def test_a_complete_run_is_reproducible():
     assert make_run().reproducible
 
@@ -182,6 +191,7 @@ def test_round_trip_through_storage(conn):
 # Comparison
 # =====================================================================
 
+
 def test_close_results_are_not_distinguishable():
     """0.53 and 0.54 with a 0.024 stderr are the same experiment."""
     assert not is_distinguishable(0.53, 0.54)
@@ -199,8 +209,7 @@ def test_difference_stderr_is_larger_than_single_stderr():
 
 
 def test_comparison_marks_the_indistinguishable_field():
-    runs = [make_run(name=f"e{i}", auc=a)
-            for i, a in enumerate([0.520, 0.525, 0.530, 0.600])]
+    runs = [make_run(name=f"e{i}", auc=a) for i, a in enumerate([0.520, 0.525, 0.530, 0.600])]
     frame = compare_experiments(runs)
 
     assert frame.iloc[0]["observed"] == 0.600
@@ -221,6 +230,7 @@ def test_comparison_of_nothing_is_empty():
 # =====================================================================
 # Registry lifecycle
 # =====================================================================
+
 
 def test_registration_starts_at_candidate(conn):
     lifecycle = ModelLifecycle(conn)
@@ -260,8 +270,7 @@ def test_full_promotion_path(conn):
     lifecycle = ModelLifecycle(conn)
     lifecycle.register("m1", "hgb")
 
-    for stage in (Stage.VALIDATING, Stage.VALIDATED, Stage.STAGING,
-                  Stage.PRODUCTION):
+    for stage in (Stage.VALIDATING, Stage.VALIDATED, Stage.STAGING, Stage.PRODUCTION):
         lifecycle.transition("m1", stage)
 
     assert lifecycle.stage_of("m1") == Stage.PRODUCTION
@@ -273,8 +282,7 @@ def test_promotion_archives_the_incumbent(conn):
     lifecycle = ModelLifecycle(conn)
     for version in ("m1", "m2"):
         lifecycle.register(version, "hgb", task="direction")
-        for stage in (Stage.VALIDATING, Stage.VALIDATED, Stage.STAGING,
-                      Stage.PRODUCTION):
+        for stage in (Stage.VALIDATING, Stage.VALIDATED, Stage.STAGING, Stage.PRODUCTION):
             lifecycle.transition(version, stage)
 
     assert lifecycle.stage_of("m1") == Stage.ARCHIVED
@@ -285,8 +293,7 @@ def test_only_one_production_model_is_returned(conn):
     lifecycle = ModelLifecycle(conn)
     for version in ("m1", "m2"):
         lifecycle.register(version, "hgb", task="direction")
-        for stage in (Stage.VALIDATING, Stage.VALIDATED, Stage.STAGING,
-                      Stage.PRODUCTION):
+        for stage in (Stage.VALIDATING, Stage.VALIDATED, Stage.STAGING, Stage.PRODUCTION):
             lifecycle.transition(version, stage)
 
     assert lifecycle.production(task="direction")["model_version"] == "m2"
@@ -296,8 +303,7 @@ def test_different_tasks_can_both_be_in_production(conn):
     lifecycle = ModelLifecycle(conn)
     for version, task in (("d1", "direction"), ("r1", "return")):
         lifecycle.register(version, "hgb", task=task)
-        for stage in (Stage.VALIDATING, Stage.VALIDATED, Stage.STAGING,
-                      Stage.PRODUCTION):
+        for stage in (Stage.VALIDATING, Stage.VALIDATED, Stage.STAGING, Stage.PRODUCTION):
             lifecycle.transition(version, stage)
 
     assert lifecycle.production(task="direction")["model_version"] == "d1"
@@ -329,6 +335,7 @@ def test_no_production_model_returns_none(conn):
 # Guided promotion
 # =====================================================================
 
+
 class FakeOutcome:
     def __init__(self, passed, failed_checks=()):
         self.passed = passed
@@ -344,17 +351,20 @@ def test_guided_promotion_records_every_intermediate_stage(conn):
 
     assert final == Stage.PRODUCTION
     stages = list(lifecycle.history("m1")["to_stage"])
-    assert stages == [Stage.CANDIDATE, Stage.VALIDATING, Stage.VALIDATED,
-                      Stage.STAGING, Stage.PRODUCTION]
+    assert stages == [
+        Stage.CANDIDATE,
+        Stage.VALIDATING,
+        Stage.VALIDATED,
+        Stage.STAGING,
+        Stage.PRODUCTION,
+    ]
 
 
 def test_guided_promotion_fails_a_bad_candidate(conn):
     lifecycle = ModelLifecycle(conn)
     lifecycle.register("m1", "hgb")
 
-    final = lifecycle.promote_through_validation(
-        "m1", FakeOutcome(False, ["auc_not_worse"])
-    )
+    final = lifecycle.promote_through_validation("m1", FakeOutcome(False, ["auc_not_worse"]))
 
     assert final == Stage.FAILED
     assert lifecycle.stage_of("m1") == Stage.FAILED
@@ -364,6 +374,7 @@ def test_guided_promotion_fails_a_bad_candidate(conn):
 # =====================================================================
 # Artifacts
 # =====================================================================
+
 
 def test_artifacts_round_trip(tmp_path):
     store = ArtifactStore(tmp_path / "artifacts")

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import streamlit as st
-
 from components.render import empty_state
 
 
@@ -41,8 +40,17 @@ HEALTHY -> WARNING -> DEGRADED -> RETRAIN_REQUIRED
     if runs is not None and not runs.empty:
         st.subheader("Run history")
         st.dataframe(
-            runs[["run_id", "mode", "started_at", "finished_at", "status",
-                  "git_commit", "config_hash"]],
+            runs[
+                [
+                    "run_id",
+                    "mode",
+                    "started_at",
+                    "finished_at",
+                    "status",
+                    "git_commit",
+                    "config_hash",
+                ]
+            ],
             use_container_width=True,
         )
     else:
@@ -57,5 +65,5 @@ HEALTHY -> WARNING -> DEGRADED -> RETRAIN_REQUIRED
             st.caption("No models registered yet.")
         else:
             st.dataframe(summary, use_container_width=True)
-    except Exception as exc:                      # noqa: BLE001
+    except Exception as exc:
         st.caption(f"Registry unavailable: {exc}")

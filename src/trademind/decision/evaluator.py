@@ -24,10 +24,16 @@ def evaluate_decisions(
     outcome_col: str = "y_true",
 ) -> dict[str, float]:
     """Score a set of decisions against what the market actually did."""
-    merged = decisions.merge(
-        outcomes, left_on=["symbol", "decision_date"],
-        right_on=["symbol", "date"], how="inner",
-    ) if "date" in outcomes.columns else decisions.join(outcomes)
+    merged = (
+        decisions.merge(
+            outcomes,
+            left_on=["symbol", "decision_date"],
+            right_on=["symbol", "date"],
+            how="inner",
+        )
+        if "date" in outcomes.columns
+        else decisions.join(outcomes)
+    )
 
     if merged.empty:
         return {}
@@ -52,9 +58,7 @@ def evaluate_decisions(
         "hit_rate": float((buys[outcome_col] > 0).mean()) if n_buys else 0.0,
         # The share of gross edge consumed by costs. Above 1.0 means the
         # strategy pays more in costs than it earns.
-        "cost_drag_ratio": (
-            round_trip_cost / gross if n_buys and gross > 0 else float("inf")
-        ),
+        "cost_drag_ratio": (round_trip_cost / gross if n_buys and gross > 0 else float("inf")),
     }
 
     if "rejected" in merged.columns:

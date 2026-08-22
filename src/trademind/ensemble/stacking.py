@@ -34,8 +34,8 @@ through the purged walk-forward splitter as well.
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Mapping, Sequence
 
 import numpy as np
 import pandas as pd
@@ -96,7 +96,10 @@ def build_meta_features(
             only_a, only_b = len(reference - keys), len(keys - reference)
             log.warning(
                 "%s covers a different key set (%d missing, %d extra); the join "
-                "keeps only the intersection.", name, only_a, only_b,
+                "keeps only the intersection.",
+                name,
+                only_a,
+                only_b,
             )
 
     if merged is None or merged.empty:
@@ -116,7 +119,9 @@ def build_meta_features(
     merged = merged.sort_values(KEYS).reset_index(drop=True)
     log.info(
         "Meta features: %d rows | %d base models | %d context columns",
-        len(merged), len(oof_frames), len(extra_cols),
+        len(merged),
+        len(oof_frames),
+        len(extra_cols),
     )
     return merged
 
@@ -136,9 +141,7 @@ class StackResult:
 
     @property
     def pooled_metrics(self) -> dict[str, float]:
-        return classification_metrics(
-            self.predictions["y_true"], self.predictions["y_pred"]
-        )
+        return classification_metrics(self.predictions["y_true"], self.predictions["y_pred"])
 
     def beats_best_base(self, metric: str = "roc_auc") -> bool | None:
         """Did stacking actually help? Often the answer is no."""
@@ -156,8 +159,7 @@ class StackResult:
             best = self.base_metrics.loc[self.base_metrics["roc_auc"].idxmax()]
             verdict = "improves on" if self.beats_best_base() else "does NOT beat"
             lines.append(
-                f"  {verdict} the best base model "
-                f"({best['model']}, AUC {best['roc_auc']:.4f})"
+                f"  {verdict} the best base model ({best['model']}, AUC {best['roc_auc']:.4f})"
             )
 
         lines.append("  mean coefficients:")
@@ -206,11 +208,15 @@ def fit_stack(
         train = data.iloc[fold.train_idx]
         val = data.iloc[fold.val_idx]
 
-        pipe = Pipeline([
-            ("scale", StandardScaler()),
-            ("model", LogisticRegression(C=C, solver="lbfgs", max_iter=2000,
-                                         random_state=42)),
-        ])
+        pipe = Pipeline(
+            [
+                ("scale", StandardScaler()),
+                (
+                    "model",
+                    LogisticRegression(C=C, solver="lbfgs", max_iter=2000, random_state=42),
+                ),
+            ]
+        )
         X_train = train[cols].fillna(train[cols].median())
         pipe.fit(X_train, (train[label_col] > 0.5).astype(int))
 
@@ -221,25 +227,36 @@ def fit_stack(
         rows.append({**fold.describe(), **metrics})
 
         coefs.append(dict(zip(cols, pipe.named_steps["model"].coef_.ravel())))
-        frames.append(pd.DataFrame({
-            "date": val["date"].to_numpy(),
-            "symbol": val["symbol"].to_numpy() if "symbol" in val else None,
-            "fold": fold.index,
-            "y_true": val[label_col].to_numpy(),
-            "y_pred": preds,
-        }))
+        frames.append(
+            pd.DataFrame(
+                {
+                    "date": val["date"].to_numpy(),
+                    "symbol": val["symbol"].to_numpy() if "symbol" in val else None,
+                    "fold": fold.index,
+                    "y_true": val[label_col].to_numpy(),
+                    "y_pred": preds,
+                }
+            )
+        )
 
         log.info("  meta fold %d: %s", fold.index, summarise(metrics))
 
     coef_frame = pd.DataFrame(coefs)
-    coefficients = pd.DataFrame({
-        "feature": cols,
-        "mean_coefficient": coef_frame.mean().reindex(cols).to_numpy(),
-        "std_coefficient": (
-            coef_frame.std(ddof=1).reindex(cols).to_numpy()
-            if len(coef_frame) > 1 else np.zeros(len(cols))
-        ),
-    }).sort_values("mean_coefficient", key=abs, ascending=False).reset_index(drop=True)
+    coefficients = (
+        pd.DataFrame(
+            {
+                "feature": cols,
+                "mean_coefficient": coef_frame.mean().reindex(cols).to_numpy(),
+                "std_coefficient": (
+                    coef_frame.std(ddof=1).reindex(cols).to_numpy()
+                    if len(coef_frame) > 1
+                    else np.zeros(len(cols))
+                ),
+            }
+        )
+        .sort_values("mean_coefficient", key=abs, ascending=False)
+        .reset_index(drop=True)
+    )
 
     return StackResult(
         predictions=pd.concat(frames, ignore_index=True),

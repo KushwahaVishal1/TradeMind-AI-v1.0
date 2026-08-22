@@ -76,29 +76,34 @@ def test_duplicate_symbols_rejected(tmp_path):
 
 
 def test_final_test_before_history_start_rejected(tmp_path):
-    bad = {**GOOD_CONFIG, "data": {**GOOD_CONFIG["data"],
-                                   "final_test_start": "2014-01-01"}}
+    bad = {**GOOD_CONFIG, "data": {**GOOD_CONFIG["data"], "final_test_start": "2014-01-01"}}
     with pytest.raises(ConfigError, match="history_start"):
         load_config(*write(tmp_path, config=bad))
 
 
 def test_purge_shorter_than_horizon_rejected(tmp_path):
     """Purge must cover the label window or train/val boundaries leak."""
-    bad = {**GOOD_CONFIG, "features": {**GOOD_CONFIG["features"],
-                                       "target_horizon_days": 10, "purge_days": 2}}
+    bad = {
+        **GOOD_CONFIG,
+        "features": {**GOOD_CONFIG["features"], "target_horizon_days": 10, "purge_days": 2},
+    }
     with pytest.raises(ConfigError, match="purge_days"):
         load_config(*write(tmp_path, config=bad))
 
 
 def test_purge_must_cover_horizon_plus_execution_offset(tmp_path):
     """purge == horizon is not enough; the execution offset adds one session."""
-    bad = {**GOOD_CONFIG, "features": {**GOOD_CONFIG["features"],
-                                       "target_horizon_days": 5, "purge_days": 5}}
+    bad = {
+        **GOOD_CONFIG,
+        "features": {**GOOD_CONFIG["features"], "target_horizon_days": 5, "purge_days": 5},
+    }
     with pytest.raises(ConfigError, match="execution offset"):
         load_config(*write(tmp_path, config=bad))
 
 
 def test_purge_at_the_tightened_minimum_is_accepted(tmp_path):
-    ok = {**GOOD_CONFIG, "features": {**GOOD_CONFIG["features"],
-                                      "target_horizon_days": 5, "purge_days": 6}}
+    ok = {
+        **GOOD_CONFIG,
+        "features": {**GOOD_CONFIG["features"], "target_horizon_days": 5, "purge_days": 6},
+    }
     assert load_config(*write(tmp_path, config=ok)).get("features.purge_days") == 6

@@ -19,8 +19,9 @@ class _RunIdFilter(logging.Filter):
         return True
 
 
-def setup_logging(level: str = "INFO", run_id: str = "-",
-                  log_dir: str | Path | None = None) -> None:
+def setup_logging(
+    level: str = "INFO", run_id: str = "-", log_dir: str | Path | None = None
+) -> None:
     """Configure root logging. Idempotent — safe to call more than once."""
     root = logging.getLogger()
     root.handlers.clear()

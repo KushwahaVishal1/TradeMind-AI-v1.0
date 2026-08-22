@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import date
 
 import numpy as np
 import pandas as pd
@@ -30,7 +29,7 @@ from ..decision.decision_engine import DecisionEngine
 from ..decision.schema import DecisionInput, Position, Signal
 from .config import BacktestConfig
 from .execution import Order, execute_orders
-from .portfolio import Portfolio, Trade
+from .portfolio import Portfolio
 
 log = logging.getLogger(__name__)
 
@@ -63,8 +62,7 @@ def _prices_on(panel: pd.DataFrame, when: pd.Timestamp, col: str) -> dict[str, f
     return {
         r.symbol: float(getattr(r, col))
         for r in rows.itertuples()
-        if getattr(r, col) is not None and np.isfinite(getattr(r, col))
-        and getattr(r, col) > 0
+        if getattr(r, col) is not None and np.isfinite(getattr(r, col)) and getattr(r, col) > 0
     }
 
 
@@ -86,10 +84,9 @@ def run_backtest(
         raise ValueError(f"Panel lacks required columns: {sorted(missing)}")
 
     panel = panel.sort_values(["date", "symbol"]).reset_index(drop=True)
-    signal_lookup = {
-        (r.date, r.symbol): r
-        for r in signals.itertuples()
-    } if not signals.empty else {}
+    signal_lookup = (
+        {(r.date, r.symbol): r for r in signals.itertuples()} if not signals.empty else {}
+    )
 
     sessions = sorted(panel["date"].unique())
     portfolio = Portfolio(config.initial_capital)
@@ -120,9 +117,7 @@ def run_backtest(
         # 3. Mark to market and reconcile both paths.
         closes = _prices_on(panel, when, "close_raw")
         if closes:
-            max_error = max(
-                max_error, abs(portfolio.reconcile(closes, session_date))
-            )
+            max_error = max(max_error, abs(portfolio.reconcile(closes, session_date)))
             curve.append(portfolio.snapshot(session_date, closes))
 
         # 4. Decide from today's data, for tomorrow.
@@ -132,43 +127,62 @@ def run_backtest(
             if sig is None:
                 continue
             holding = portfolio.position(row.symbol)
-            inputs.append(DecisionInput(
-                symbol=row.symbol,
-                decision_date=session_date,
-                calibrated_probability=float(getattr(sig, "calibrated", np.nan)),
-                expected_return=float(getattr(sig, "expected_return", np.nan))
-                if hasattr(sig, "expected_return") else None,
-                volatility=float(getattr(row, "volatility_20", np.nan))
-                if hasattr(row, "volatility_20") else None,
-                position=Position(row.symbol, holding.shares, holding.cost_basis),
-                n_open_positions=len(portfolio.open_symbols),
-            ))
+            inputs.append(
+                DecisionInput(
+                    symbol=row.symbol,
+                    decision_date=session_date,
+                    calibrated_probability=float(getattr(sig, "calibrated", np.nan)),
+                    expected_return=float(getattr(sig, "expected_return", np.nan))
+                    if hasattr(sig, "expected_return")
+                    else None,
+                    volatility=float(getattr(row, "volatility_20", np.nan))
+                    if hasattr(row, "volatility_20")
+                    else None,
+                    position=Position(row.symbol, holding.shares, holding.cost_basis),
+                    n_open_positions=len(portfolio.open_symbols),
+                )
+            )
 
         if inputs:
             decisions = engine.decide_batch(inputs)
             for d in decisions:
                 decision_rows.append(d.to_row())
                 if d.signal is not Signal.HOLD or not np.isnan(d.target_weight):
-                    pending.append(Order(
-                        symbol=d.symbol,
-                        decision_date=session_date,
-                        target_weight=d.target_weight,
-                        signal=d.signal.value,
-                    ))
+                    pending.append(
+                        Order(
+                            symbol=d.symbol,
+                            decision_date=session_date,
+                            target_weight=d.target_weight,
+                            signal=d.signal.value,
+                        )
+                    )
 
-    trades = pd.DataFrame([{
-        "date": t.trade_date, "symbol": t.symbol, "side": t.side,
-        "shares": t.shares, "price": t.price,
-        "notional": t.notional,
-        "commission": t.costs.commission, "spread": t.costs.spread,
-        "slippage": t.costs.slippage, "total_cost": t.costs.total,
-        "realised_pnl": t.realised_pnl,
-    } for t in portfolio.trades])
+    trades = pd.DataFrame(
+        [
+            {
+                "date": t.trade_date,
+                "symbol": t.symbol,
+                "side": t.side,
+                "shares": t.shares,
+                "price": t.price,
+                "notional": t.notional,
+                "commission": t.costs.commission,
+                "spread": t.costs.spread,
+                "slippage": t.costs.slippage,
+                "total_cost": t.costs.total,
+                "realised_pnl": t.realised_pnl,
+            }
+            for t in portfolio.trades
+        ]
+    )
 
     log.info(
         "Backtest complete: %d sessions | %d fills | %d round trips | "
         "max reconciliation error %.6f",
-        len(curve), len(portfolio.trades), portfolio.round_trips(), max_error,
+        len(curve),
+        len(portfolio.trades),
+        portfolio.round_trips(),
+        max_error,
     )
 
     return BacktestResult(

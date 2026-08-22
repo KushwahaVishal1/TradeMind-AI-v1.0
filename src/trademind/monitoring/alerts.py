@@ -12,7 +12,7 @@ alertable, and duplicate alerts within a cooldown window are suppressed.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from enum import Enum
 
 
@@ -33,7 +33,7 @@ class Alert:
     message: str
     context: dict = field(default_factory=dict)
     raised_at: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds")
+        default_factory=lambda: datetime.now(UTC).isoformat(timespec="seconds")
     )
 
     @property
@@ -52,8 +52,9 @@ class AlertCollector:
     alerts: list[Alert] = field(default_factory=list)
     _last_seen: dict[str, date] = field(default_factory=dict)
 
-    def add(self, severity: Severity, code: str, message: str,
-            when: date | None = None, **context) -> Alert | None:
+    def add(
+        self, severity: Severity, code: str, message: str, when: date | None = None, **context
+    ) -> Alert | None:
         """Record an alert unless the same code fired recently."""
         alert = Alert(severity, code, message, context)
         when = when or date.today()
