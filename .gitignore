@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Data and artifacts are regenerated, never committed.
+data/raw/
+data/processed/
+data/predictions/
+*.duckdb
+*.db
+*.db-wal
+*.db-shm
+models/*.pkl
+models/*.joblib
+logs/
+reports/generated/
+.ipynb_checkpoints/
+.env

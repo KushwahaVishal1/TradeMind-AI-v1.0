@@ -1,0 +1,27 @@
+# Trading universe.
+#
+# Deliberately small and liquid. A 15-name universe of large-cap NSE stocks
+# keeps every phase fast enough to iterate on, and liquidity means the cost
+# model in Phase 7 stays defensible. Widen only after the pipeline is correct.
+#
+# Symbols use the yfinance NSE convention (.NS suffix).
+
+name: nifty15_liquid
+benchmark: "^NSEI"          # NIFTY 50 index
+
+symbols:
+  - RELIANCE.NS
+  - TCS.NS
+  - HDFCBANK.NS
+  - INFY.NS
+  - ICICIBANK.NS
+  - HINDUNILVR.NS
+  - ITC.NS
+  - LT.NS
+  - SBIN.NS
+  - BHARTIARTL.NS
+  - KOTAKBANK.NS
+  - AXISBANK.NS
+  - ASIANPAINT.NS
+  - MARUTI.NS
+  - SUNPHARMA.NS

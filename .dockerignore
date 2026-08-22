@@ -1,0 +1,18 @@
+.git
+.github
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+*.egg-info
+.venv
+venv
+
+# Never bake data or artifacts into the image.
+data/
+logs/
+models/
+reports/
+notebooks/
+*.duckdb
+*.db

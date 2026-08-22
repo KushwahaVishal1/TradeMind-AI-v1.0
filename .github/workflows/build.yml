@@ -1,0 +1,20 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t trademind-ai:ci .
+      - name: Protected invariants inside the image
+        # The image is only useful if the invariants hold in it, not just on
+        # the runner. Different base image, different wheel builds.
+        run: docker run --rm trademind-ai:ci pytest -m protected -q
+      - name: CLI smoke test
+        run: docker run --rm trademind-ai:ci python main.py init

@@ -1,0 +1,39 @@
+name: lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install ruff
+      - name: Lint
+        run: ruff check src tests dashboard
+      - name: Format check
+        run: ruff format --check src tests
+
+  forbidden-patterns:
+    # Greps for constructs this project has decided are never correct. Cheap,
+    # and it catches a reintroduction at review time rather than three phases
+    # later when a metric looks strange.
+    #
+    # Runs through scripts/check_forbidden_patterns.py rather than inline grep,
+    # because the naive version false-positives on the docstrings that *warn*
+    # about these patterns — and a gate that fires on its own documentation is
+    # a gate someone disables.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check forbidden patterns
+        run: python scripts/check_forbidden_patterns.py

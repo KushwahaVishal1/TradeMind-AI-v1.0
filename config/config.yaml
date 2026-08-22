@@ -1,0 +1,59 @@
+# TradeMind AI — central configuration.
+# Every tunable lives here. No hidden constants in code.
+
+project:
+  name: trademind-ai
+  timezone: Asia/Kolkata
+
+data:
+  root: data
+  provider: yfinance
+  # Inclusive start of the full history we ever download.
+  history_start: "2015-01-01"
+  # The final test window is LOCKED. Nothing may be tuned against it.
+  # Anything on/after this date is off-limits until the single final evaluation.
+  final_test_start: "2024-01-01"
+
+features:
+  # Bumping this invalidates cached feature files and is recorded on every prediction.
+  version: "f1"
+  target_horizon_days: 1
+  # Purge and embargo are expressed in trading sessions, not calendar days.
+  # purge_days must be >= target_horizon_days + 1. The +1 is the execution
+  # offset: the decision is made at the close of t but fills at the open of
+  # t+1, so a row at t carries information through t+1+horizon.
+  purge_days: 5
+  embargo_days: 3
+
+decision:
+  version: "d1"
+  threshold_version: "t1"
+  # buy/sell are DERIVED by `python main.py thresholds` on development OOF
+  # data and written here once, then locked. Null until that has been run on
+  # real data — the values below are not defaults to trust.
+  buy_threshold: null
+  sell_threshold: null
+
+  # min_expected_return is NOT tuned. It is computed from the cost model:
+  #   round_trip = 2 x (commission + spread + slippage) = 26 bps = 0.0026
+  #   floor      = round_trip x cost_margin
+  # The roadmap's 0.0005 sat below the round-trip cost, so every trade passing
+  # it lost 21 bps on costs alone.
+  cost_margin: 1.5
+  min_expected_return: null
+
+  sizing_method: fixed        # fixed | volatility_target | confidence
+  reference_volatility: 0.25  # position-level, not a portfolio target
+  max_positions: 10
+
+backtest:
+  initial_capital: 1000000.0
+  # Costs in basis points, applied per side.
+  commission_bps: 3.0
+  spread_bps: 5.0
+  slippage_bps: 5.0
+  max_position_weight: 0.10
+
+logging:
+  level: INFO
+  json: false

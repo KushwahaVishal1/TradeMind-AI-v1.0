@@ -1,0 +1,26 @@
+services:
+  trademind:
+    build: .
+    image: trademind-ai:latest
+    volumes:
+      # Data and artifacts live on the host so they survive image rebuilds.
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./models:/app/models
+      - ./reports:/app/reports
+    environment:
+      PYTHONHASHSEED: "42"
+    command: python main.py daily
+
+  dashboard:
+    build: .
+    image: trademind-ai:latest
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./data:/app/data
+      - ./reports:/app/reports
+    command: >
+      sh -c "pip install streamlit &&
+             streamlit run dashboard/app.py
+             --server.address=0.0.0.0 --server.port=8501"
