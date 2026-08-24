@@ -28,11 +28,13 @@ features:
 decision:
   version: "d1"
   threshold_version: "t1"
+  buy: 0.45
+  sell: 0.43
   # buy/sell are DERIVED by `python main.py thresholds` on development OOF
   # data and written here once, then locked. Null until that has been run on
   # real data — the values below are not defaults to trust.
-  buy_threshold: null
-  sell_threshold: null
+  buy_threshold: 0.45
+  sell_threshold: 0.43
 
   # min_expected_return is NOT tuned. It is computed from the cost model:
   #   round_trip = 2 x (commission + spread + slippage) = 26 bps = 0.0026
@@ -40,7 +42,7 @@ decision:
   # The roadmap's 0.0005 sat below the round-trip cost, so every trade passing
   # it lost 21 bps on costs alone.
   cost_margin: 1.5
-  min_expected_return: null
+  min_expected_return: 0.0039
 
   sizing_method: fixed        # fixed | volatility_target | confidence
   reference_volatility: 0.25  # position-level, not a portfolio target
