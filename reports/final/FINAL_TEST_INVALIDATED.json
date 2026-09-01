@@ -1,0 +1,12 @@
+{
+  "status": "INVALIDATED_WITHOUT_EVALUATION",
+  "original_lock_created_at": "2026-08-24T04:59:38+00:00",
+  "original_final_test_start": "2024-01-01",
+  "original_n_rows": 9855,
+  "expected_fingerprint": "52439e3babd08f4b",
+  "observed_fingerprint": "b9e7813b7984bdab",
+  "recorded_accesses": 0,
+  "evidence_file_created": false,
+  "reason": "The exact original feature snapshot is unavailable and current historical feature values no longer match the sealed fingerprint.",
+  "decision": "Do not replace the original fingerprint or report an original final-test result."
+}

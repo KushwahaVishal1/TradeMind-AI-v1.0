@@ -1,0 +1,17 @@
+{
+  "status": "AWAITING_FUTURE_DATA",
+  "evaluation_name": "replacement_future_holdout_v2",
+  "disclosure": "This is a replacement evaluation, not the original Phase 3 final test.",
+  "holdout_start": "2026-09-02",
+  "holdout_end": "2027-01-29",
+  "frozen_code_commit": "8a696053fe197044b7375eea726f5b11b5bb5017",
+  "production_model_version": "production_ensemble-4e894769114e-2023-12-27",
+  "production_training_end": "2023-12-27",
+  "rules": [
+    "Do not tune thresholds, features, model parameters, universe, or costs using holdout rows.",
+    "Continue producing immutable daily predictions after the market close.",
+    "Do not evaluate or summarize holdout performance before 2027-01-29.",
+    "Record the data fingerprint, code commit, configuration hash, metrics, and evidence at evaluation.",
+    "Report the result as the replacement v2 holdout, never as the original final test."
+  ]
+}

@@ -155,9 +155,13 @@ def test_no_fabricated_final_test_result_exists():
         return  # the evaluation has legitimately been run
 
     text = report.read_text(encoding="utf-8")
-    assert "LOCKED. Not evaluated." in text, (
-        "The final report claims a result without an evidence file."
-    )
+    assert any(
+        status in text
+        for status in (
+            "LOCKED. Not evaluated.",
+            "ORIGINAL LOCK INVALIDATED. Not evaluated.",
+        )
+    ), "The final report claims a result without an evidence file."
     # The discarded placeholder numbers may appear only as a cautionary tale.
     # Checked against a surrounding window rather than a single line, because
     # prose wraps and the disclaimer often sits on the previous line.

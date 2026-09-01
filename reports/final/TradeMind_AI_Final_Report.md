@@ -427,12 +427,19 @@ help.
 
 ## 15. Final test
 
-**Status: LOCKED. Not evaluated.**
+**Status: ORIGINAL LOCK INVALIDATED. Not evaluated.**
 
-The final-test window has been sealed since Phase 3 and has never been read.
+The Phase 3 final-test window was never successfully unlocked. Its sealed
+fingerprint (`52439e3babd08f4b`) does not match the regenerated historical
+feature snapshot (`b9e7813b7984bdab`), and no archive containing the exact
+original feature data was available. The original fingerprint remains
+unchanged, no access was recorded, and no evaluation evidence file exists.
 
-**No result is reported here because no result exists.** The methodology is
-complete and the evaluation is one command:
+**No result is reported here because no result exists.** The original result is
+unrecoverable without the exact snapshot. A replacement future holdout is
+frozen for 2026-09-02 through 2027-01-29 at code commit `8a69605`. It must be
+reported as v2, never as the original Phase 3 test, and must not be inspected
+before the period completes. After that date, evaluation remains one command:
 
 ```bash
 python scripts/final_evaluation.py --confirm

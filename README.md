@@ -209,10 +209,16 @@ produces.
 
 ## Final test status
 
-**LOCKED. Not yet evaluated.**
+**ORIGINAL LOCK INVALIDATED. Not evaluated.**
 
-The final-test window has been sealed since Phase 3 and has never been read. No
-result exists for it, and none is reported.
+The Phase 3 window was never successfully unlocked and no result exists. Its
+fingerprint no longer matches the regenerated historical features, and the
+exact original snapshot was not found in the repository or available archives.
+The original fingerprint remains unchanged as integrity evidence.
+
+A replacement future holdout is frozen in `data/final_test_plan_v2.json` for
+2026-09-02 through 2027-01-29. Until it completes, continue running the daily
+pipeline after market close without tuning against holdout outcomes.
 
 To run it — once:
 
