@@ -244,9 +244,22 @@ def cmd_train(cfg, args) -> int:
 
 def cmd_ensemble(cfg, args) -> int:
     """Stack the base models and calibrate the result, both out-of-fold."""
-    from trademind.ensemble import build_ensemble
+    import pandas as pd
+
+    from trademind.ensemble import (
+        ProductionEnsemble,
+        build_ensemble,
+        fit_production_stack,
+        save_production_ensemble,
+    )
     from trademind.features import drop_unlabelled, feature_columns
-    from trademind.models import generate_oof, hgb_direction, logistic_direction
+    from trademind.features.labels import TRADEABLE_LABEL
+    from trademind.models import (
+        generate_oof,
+        hgb_direction,
+        hgb_return,
+        logistic_direction,
+    )
     from trademind.storage.lake import ParquetLake
     from trademind.validation import GapConfig, PurgedWalkForwardSplit, split_development
 
@@ -273,7 +286,7 @@ def cmd_ensemble(cfg, args) -> int:
     context_cols = [c for c in ("trend_regime", "vol_percentile_expanding")
                     if c in data.columns]
     ensemble = build_ensemble(
-        base, context=data[["date", "symbol"] + context_cols],
+        base, context=data[["date", "symbol", *context_cols]],
         context_cols=context_cols, splitter=splitter,
     )
 
@@ -283,6 +296,37 @@ def cmd_ensemble(cfg, args) -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     ensemble.signals.to_parquet(out, index=False)
     log.info("Calibrated OOF signals -> %s (%d rows)", out, len(ensemble.signals))
+
+    # OOF signals measure the system honestly, but cannot score a future row.
+    # Fit and persist the distinct artifact that is allowed to ship.
+    direction_models = {
+        "logistic": logistic_direction(cfg.feature_version).fit(
+            data[feats], data["tradeable_direction_1d"], data["date"]
+        ),
+        "hgb": hgb_direction(cfg.feature_version).fit(
+            data[feats], data["tradeable_direction_1d"], data["date"]
+        ),
+    }
+    return_model = hgb_return(cfg.feature_version).fit(
+        data[feats], data[TRADEABLE_LABEL], data["date"]
+    )
+    production_stack, meta_cols = fit_production_stack(ensemble.meta_features)
+    training_dates = pd.to_datetime(data["date"])
+    bundle = ProductionEnsemble(
+        direction_models=direction_models,
+        return_model=return_model,
+        stack_model=production_stack,
+        calibrator=ensemble.production_calibrator,
+        meta_feature_columns=meta_cols,
+        context_columns=list(context_cols),
+        training_start=str(training_dates.min().date()),
+        training_end=str(training_dates.max().date()),
+        feature_version=cfg.feature_version,
+    )
+    artifact = save_production_ensemble(
+        bundle, cfg.root / "models" / "production_ensemble.joblib"
+    )
+    log.info("Production ensemble %s -> %s", bundle.version, artifact)
     return 0
 
 

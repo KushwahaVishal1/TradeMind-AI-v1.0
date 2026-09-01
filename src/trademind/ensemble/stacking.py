@@ -264,3 +264,44 @@ def fit_stack(
         coefficients=coefficients,
         base_metrics=base_metrics if base_metrics is not None else pd.DataFrame(),
     )
+
+
+def fit_production_stack(
+    meta: pd.DataFrame,
+    label_col: str = "y_true",
+    feature_cols: Sequence[str] | None = None,
+    C: float = 1.0,
+):
+    """Fit the stack that ships, using every legitimate development OOF row.
+
+    ``fit_stack`` estimates generalisation out of fold.  Its fold models are
+    deliberately unsuitable for inference because each saw a different
+    training window.  Production needs one separately fitted model, just as
+    calibration has a distinct production artifact.
+    """
+    from sklearn.impute import SimpleImputer
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    cols = list(feature_cols) if feature_cols else meta_feature_columns(meta, label_col)
+    data = meta[meta[label_col].notna()].reset_index(drop=True)
+    if data.empty:
+        raise ValueError("No labelled rows available for the production stack")
+    if not cols:
+        raise ValueError("No meta-features available for the production stack")
+
+    model = Pipeline(
+        [
+            ("impute", SimpleImputer(strategy="median")),
+            ("scale", StandardScaler()),
+            (
+                "model",
+                LogisticRegression(
+                    C=C, solver="lbfgs", max_iter=2000, random_state=42
+                ),
+            ),
+        ]
+    )
+    model.fit(data[cols], (data[label_col] > 0.5).astype(int))
+    return model, cols

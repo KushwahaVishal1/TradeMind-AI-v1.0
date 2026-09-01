@@ -13,6 +13,7 @@ from .monitoring_job import MonitoringJob, RetrainingJob
 from .outcome_job import OutcomeJob
 from .prediction_job import PredictionJob
 from .scheduler import crontab_line, should_run_today, systemd_timer
+from .signal_job import LiveSignalJob
 
 __all__ = [
     "MODES",
@@ -21,6 +22,7 @@ __all__ = [
     "Job",
     "JobResult",
     "JobStatus",
+    "LiveSignalJob",
     "MonitoringJob",
     "OutcomeJob",
     "PipelineContext",

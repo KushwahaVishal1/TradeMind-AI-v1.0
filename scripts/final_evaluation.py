@@ -38,7 +38,7 @@ import argparse
 import json
 import logging
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -89,18 +89,23 @@ def main() -> int:
         )
         return 1
 
+    import pandas as pd
+
     from trademind.backtesting import (
-        BacktestConfig, buy_and_hold, equal_weight_rebalanced,
-        performance_metrics, render_report, run_backtest,
+        BacktestConfig,
+        buy_and_hold,
+        equal_weight_rebalanced,
+        performance_metrics,
+        render_report,
+        run_backtest,
     )
     from trademind.config import load_config
     from trademind.decision import DecisionEngine, RiskEngine, Thresholds
+    from trademind.ensemble import load_production_ensemble
     from trademind.models.metrics import classification_metrics, summarise
     from trademind.provenance import capture
     from trademind.storage.lake import ParquetLake
     from trademind.validation import FinalTestLock
-
-    import pandas as pd
 
     cfg = load_config()
     provenance = capture(config_hash=cfg.config_hash)
@@ -138,9 +143,36 @@ def main() -> int:
             )
             return 1
 
-    signals_path = cfg.data_root / "predictions" / "calibrated_oof.parquet"
-    if not signals_path.exists():
-        log.error("No calibrated signals. Run `main.py ensemble` first.")
+    production_path = cfg.root / "models" / "production_ensemble.joblib"
+    if not production_path.exists():
+        log.error("No production ensemble. Run `main.py ensemble` first.")
+        return 1
+    production = load_production_ensemble(production_path)
+    if production.feature_version != cfg.feature_version:
+        log.error(
+            "Production ensemble feature version %s does not match config %s.",
+            production.feature_version,
+            cfg.feature_version,
+        )
+        return 1
+    if pd.Timestamp(production.training_end) >= lock.final_test_start:
+        log.error(
+            "Production ensemble was trained through %s, which reaches the "
+            "locked final-test window beginning %s.",
+            production.training_end,
+            lock.final_test_start.date(),
+        )
+        return 1
+
+    required_features = {
+        feature
+        for model in [*production.direction_models.values(), production.return_model]
+        for feature in model.feature_names_
+    }
+    required_features.update(production.context_columns)
+    missing_features = sorted(required_features - set(panel.columns))
+    if missing_features:
+        log.error("Feature panel cannot score the production ensemble: %s", missing_features)
         return 1
 
     # --- the unlock ------------------------------------------------------
@@ -153,14 +185,16 @@ def main() -> int:
              len(final_panel),
              final_panel["date"].min().date(), final_panel["date"].max().date())
 
-    signals = pd.read_parquet(signals_path)
-    final_signals = signals[
-        pd.to_datetime(signals["date"]) >= lock.final_test_start
-    ]
+    final_signals = production.predict(final_panel)
+    outcomes = final_panel[["date", "symbol", "tradeable_direction_1d"]].rename(
+        columns={"tradeable_direction_1d": "y_true"}
+    )
+    final_signals = final_signals.merge(
+        outcomes, on=["date", "symbol"], how="inner", validate="one_to_one"
+    ).dropna(subset=["calibrated", "y_true"])
     if final_signals.empty:
         log.error(
-            "No signals exist for the final-test window. Production predictions "
-            "must be generated for it before it can be evaluated."
+            "The unlocked final-test window produced no resolved, scoreable signals."
         )
         return 1
 
@@ -221,7 +255,7 @@ def main() -> int:
     )
 
     EVIDENCE_FILE.write_text(json.dumps({
-        "executed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "executed_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "reason": args.reason,
         "lock_fingerprint": lock.fingerprint,
         "final_test_start": str(lock.final_test_start.date()),

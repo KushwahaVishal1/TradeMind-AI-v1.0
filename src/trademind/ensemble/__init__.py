@@ -13,14 +13,26 @@ from .ensemble_metrics import (
     render_reliability,
     sharpness,
 )
+from .inference import (
+    ProductionEnsemble,
+    load_production_ensemble,
+    save_production_ensemble,
+)
 from .pipeline import EnsembleResult, build_ensemble
-from .stacking import AlignmentError, StackResult, build_meta_features, fit_stack
+from .stacking import (
+    AlignmentError,
+    StackResult,
+    build_meta_features,
+    fit_production_stack,
+    fit_stack,
+)
 
 __all__ = [
     "AlignmentError",
     "CalibrationResult",
     "Calibrator",
     "EnsembleResult",
+    "ProductionEnsemble",
     "StackResult",
     "build_ensemble",
     "build_meta_features",
@@ -29,9 +41,12 @@ __all__ = [
     "decompose_brier",
     "expected_calibration_error",
     "fit_production_calibrator",
+    "fit_production_stack",
     "fit_stack",
+    "load_production_ensemble",
     "maximum_calibration_error",
     "reliability_table",
     "render_reliability",
+    "save_production_ensemble",
     "sharpness",
 ]

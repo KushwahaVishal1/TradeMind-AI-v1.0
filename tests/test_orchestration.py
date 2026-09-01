@@ -317,6 +317,12 @@ def test_outcomes_resolve_before_predictions_are_made():
     assert names.index("outcomes") < names.index("predictions")
 
 
+def test_daily_signals_are_generated_before_predictions():
+    names = [j.name for j in build_jobs("daily")]
+    assert names.index("features") < names.index("signals") < names.index("predictions")
+    assert "signals" not in [j.name for j in build_jobs("backfill")]
+
+
 def test_monitoring_runs_after_predictions():
     """Today's features must be in the current window when drift is computed."""
     names = [j.name for j in build_jobs("daily")]

@@ -48,6 +48,7 @@ from .ingestion_job import FeatureJob, IngestionJob
 from .monitoring_job import MonitoringJob, RetrainingJob
 from .outcome_job import OutcomeJob
 from .prediction_job import PredictionJob
+from .signal_job import LiveSignalJob
 
 log = logging.getLogger(__name__)
 
@@ -103,14 +104,15 @@ def build_jobs(mode: str, provider=None, retrain_fn=None) -> list[Job]:
         # replaced would attribute those rows to a version that may not survive.
         return [FeatureJob(), MonitoringJob(), RetrainingJob(retrain_fn)]
 
-    return [
+    jobs = [
         IngestionJob(provider),
         FeatureJob(),
         OutcomeJob(),  # resolve before predicting; see module docstring
-        PredictionJob(),
-        MonitoringJob(),
-        RetrainingJob(retrain_fn),
     ]
+    if mode == "daily":
+        jobs.append(LiveSignalJob())
+    jobs.extend([PredictionJob(), MonitoringJob(), RetrainingJob(retrain_fn)])
+    return jobs
 
 
 def run_pipeline(
