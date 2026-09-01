@@ -162,7 +162,18 @@ class FinalTestLock:
             )
 
         boundary = self.final_test_start
-        locked = panel[pd.to_datetime(panel[date_col]) >= boundary].reset_index(drop=True)
+        available = panel[pd.to_datetime(panel[date_col]) >= boundary].reset_index(drop=True)
+        if len(available) < self.n_rows:
+            raise FinalTestViolation(
+                "The final-test data is shorter than when it was locked "
+                f"({len(available)} rows now, {self.n_rows} originally)."
+            )
+
+        # The operational feature lake keeps growing after the lock is made.
+        # Authenticate and release only the immutable snapshot that existed at
+        # creation time; later appended sessions are live data, not part of the
+        # one-time final test.
+        locked = available.iloc[: self.n_rows].reset_index(drop=True)
 
         current = _fingerprint(locked, date_col)
         if current != self.fingerprint:

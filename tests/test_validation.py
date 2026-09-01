@@ -367,6 +367,20 @@ def test_altered_final_test_data_is_detected():
         lock.unlock(tampered, reason="evaluation")
 
 
+def test_rows_appended_after_lock_do_not_change_the_snapshot():
+    """A live feature lake grows, but the final-test snapshot stays fixed."""
+    df = panel(n_days=1200)
+    lock = FinalTestLock.create(df, date(2021, 1, 1))
+    later = df.tail(5).copy()
+    later["date"] = later["date"] + pd.Timedelta(days=2000)
+    grown = pd.concat([df, later], ignore_index=True)
+
+    released = lock.unlock(grown, reason="final evaluation")
+
+    assert len(released) == lock.n_rows
+    assert released["date"].max() < later["date"].min()
+
+
 def test_lock_survives_a_round_trip(tmp_path):
     df = panel(n_days=1200)
     lock = FinalTestLock.create(df, date(2021, 1, 1))
