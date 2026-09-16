@@ -37,6 +37,21 @@ from .stacking import StackResult, build_meta_features, fit_stack
 log = logging.getLogger(__name__)
 
 
+def attach_expected_returns(signals: pd.DataFrame, returns: pd.DataFrame) -> pd.DataFrame:
+    """Match independently generated OOF returns to calibrated direction rows."""
+    result = signals.merge(
+        returns[["date", "symbol", "y_pred"]].rename(
+            columns={"y_pred": "expected_return"}
+        ),
+        on=["date", "symbol"], how="left", validate="one_to_one",
+    )
+    import numpy as np
+
+    if not np.isfinite(result["expected_return"]).all():
+        raise ValueError("Every calibrated signal needs a finite OOF expected return")
+    return result
+
+
 @dataclass
 class EnsembleResult:
     """Everything Phase 6 needs, plus everything the report needs."""

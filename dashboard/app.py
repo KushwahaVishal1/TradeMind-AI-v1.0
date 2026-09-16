@@ -37,7 +37,6 @@ PAGES = {
 }
 
 
-@st.cache_resource
 def _load():
     cfg = load_config()
     conn = init_db(cfg.data_root / "trademind.db")
@@ -48,6 +47,15 @@ def main() -> None:
     st.set_page_config(page_title="TradeMind AI", layout="wide")
 
     cfg, store = _load()
+    # SQLite connections belong to the thread that created them. Streamlit
+    # reruns can use a new script thread, so open and close one per run.
+    try:
+        _render(cfg, store)
+    finally:
+        store.conn.close()
+
+
+def _render(cfg, store) -> None:
     state = build_dashboard_state(cfg, store)
 
     st.sidebar.title("TradeMind AI")

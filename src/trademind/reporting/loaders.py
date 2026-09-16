@@ -29,7 +29,10 @@ def _safe(fn, what: str, default=None):
 
 def load_equity_curve(root: Path) -> pd.DataFrame:
     path = Path(root) / "reports" / "equity_curve.csv"
-    return _safe(lambda: pd.read_csv(path), "equity curve", pd.DataFrame())
+    return _safe(
+        lambda: pd.read_csv(path, parse_dates=["date"]).sort_values("date"),
+        "equity curve", pd.DataFrame(),
+    )
 
 
 def load_trades(root: Path) -> pd.DataFrame:

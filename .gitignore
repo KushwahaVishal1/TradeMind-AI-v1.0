@@ -18,5 +18,6 @@ models/*.pkl
 models/*.joblib
 logs/
 reports/generated/
+reports/before_performance_fix_20260916/
 .ipynb_checkpoints/
 .env

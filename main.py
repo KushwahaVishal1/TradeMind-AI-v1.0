@@ -292,10 +292,18 @@ def cmd_ensemble(cfg, args) -> int:
 
     log.info("\n%s", ensemble.render())
 
+    # Decisions need magnitude as well as direction. Use return predictions
+    # from the same purged folds, never the production model on historical rows.
+    return_oof = generate_oof(
+        data, hgb_return, feats, TRADEABLE_LABEL, "return", splitter, "hgb_return"
+    )
+    from trademind.ensemble.pipeline import attach_expected_returns
+
+    signals = attach_expected_returns(ensemble.signals, return_oof.predictions)
     out = cfg.data_root / "predictions" / "calibrated_oof.parquet"
     out.parent.mkdir(parents=True, exist_ok=True)
-    ensemble.signals.to_parquet(out, index=False)
-    log.info("Calibrated OOF signals -> %s (%d rows)", out, len(ensemble.signals))
+    signals.to_parquet(out, index=False)
+    log.info("Calibrated OOF signals -> %s (%d rows)", out, len(signals))
 
     # OOF signals measure the system honestly, but cannot score a future row.
     # Fit and persist the distinct artifact that is allowed to ship.
