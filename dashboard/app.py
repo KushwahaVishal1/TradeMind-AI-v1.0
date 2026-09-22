@@ -15,13 +15,23 @@ inconvenient findings quietly stop being displayed.
 from __future__ import annotations
 
 import sys
+from functools import partial
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 import streamlit as st  # noqa: E402
-from pages import drift, model, overview, performance, retraining, signals  # noqa: E402
+from app_pages import (  # noqa: E402
+    drift,
+    evening,
+    intraday,
+    model,
+    overview,
+    performance,
+    retraining,
+    signals,
+)
 
 from trademind.config import load_config  # noqa: E402
 from trademind.reporting import build_dashboard_state  # noqa: E402
@@ -30,6 +40,8 @@ from trademind.storage import PredictionStore, init_db  # noqa: E402
 PAGES = {
     "Overview": overview,
     "Signals": signals,
+    "Intraday indices": intraday,
+    "Tomorrow's forecast": evening,
     "Performance": performance,
     "Model": model,
     "Drift": drift,
@@ -60,7 +72,17 @@ def _render(cfg, store) -> None:
 
     st.sidebar.title("TradeMind AI")
     st.sidebar.caption("Probabilistic market signal and decision-support platform")
-    choice = st.sidebar.radio("Page", list(PAGES))
+    # Explicit navigation disables automatic pages/ discovery. Each route
+    # invokes the renderer with the state and connection created for this run.
+    selected = st.navigation([
+        st.Page(
+            partial(module.render, state, cfg, store),
+            title=title,
+            url_path=module.__name__.rsplit(".", 1)[-1],
+            default=title == "Overview",
+        )
+        for title, module in PAGES.items()
+    ])
 
     st.sidebar.divider()
     st.sidebar.warning(
@@ -71,7 +93,7 @@ def _render(cfg, store) -> None:
     )
     st.sidebar.caption(f"config hash `{cfg.config_hash}`")
 
-    PAGES[choice].render(state, cfg, store)
+    selected.run()
 
 
 if __name__ == "__main__":

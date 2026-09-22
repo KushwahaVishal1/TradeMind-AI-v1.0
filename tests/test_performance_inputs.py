@@ -44,7 +44,7 @@ def test_performance_page_accepts_csv_date_strings(monkeypatch):
     monkeypatch.syspath_prepend(str(Path(__file__).resolve().parents[1] / "dashboard"))
     app = AppTest.from_string('''
 import pandas as pd
-from pages.performance import render
+from app_pages.performance import render
 curve = pd.DataFrame({
     "date": ["2023-01-04", "2023-01-03"],
     "equity": [100., 100.], "exposure": [0., 0.], "n_positions": [0, 0],

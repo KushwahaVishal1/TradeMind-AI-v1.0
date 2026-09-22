@@ -42,6 +42,44 @@ def git_commit() -> str | None:
         return None
 
 
+def cmd_intraday(cfg, args) -> int:
+    """Collect index candles without changing daily-model data or predictions."""
+    from trademind.ingestion.intraday import INDICES, refresh_candles
+
+    failed = 0
+    for name, symbol in INDICES.items():
+        try:
+            frame = refresh_candles(cfg.data_root, symbol, args.interval)
+            log.info("%s: %d saved %s candles; latest %s", name, len(frame),
+                     args.interval, frame.timestamp.max())
+        except Exception as exc:
+            failed += 1
+            log.error("%s intraday download failed: %s", name, exc)
+    return 1 if failed else 0
+
+
+def cmd_evening(cfg) -> int:
+    from trademind.ingestion.evening_forecast import generate_evening_forecasts
+    from trademind.reporting.forecast_outcomes import resolve_forecasts
+
+    resolved, outcome_errors = resolve_forecasts(cfg)
+    log.info("Added %d evening forecast outcomes", resolved)
+    for name, error in outcome_errors.items():
+        log.warning("Outcome %s: %s", name, error)
+    try:
+        forecasts, errors = generate_evening_forecasts(cfg)
+    except ValueError as exc:
+        log.error("Evening forecast unavailable: %s", exc)
+        return 1
+    for row in forecasts:
+        log.info("%s | %s | %s | P(up)=%.1f%% | expected return=%+.3f%%",
+                 row["index"], row["forecast_session"], row["direction"],
+                 100 * row["probability_up"], 100 * row["expected_return"])
+    for name, error in errors.items():
+        log.error("%s: %s", name, error)
+    return 1 if errors else 0
+
+
 def cmd_init(cfg) -> int:
     db_path = cfg.data_root / "trademind.db"
     conn = init_db(db_path)
@@ -548,13 +586,15 @@ def main(argv: list[str] | None = None) -> int:
         "command",
         choices=["init", "ingest", "features", "validate", "train",
                  "ensemble", "thresholds", "backtest", "monitor", "experiments",
-                 "backfill", "daily", "retrain"],
+                 "backfill", "daily", "retrain", "intraday", "evening"],
     )
     parser.add_argument(
         "--incremental", action="store_true",
         help="fetch only new bars since the last stored date",
     )
     parser.add_argument("--folds", type=int, default=5)
+    parser.add_argument("--interval", choices=["1m", "5m", "15m"], default="5m",
+                        help="candle interval for the intraday command")
     parser.add_argument("--test-sessions", type=int, default=126)
     parser.add_argument("--date", default=None,
                         help="run as of this ISO date instead of today")
@@ -576,6 +616,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "init":
         return cmd_init(cfg)
+    if args.command == "intraday":
+        return cmd_intraday(cfg, args)
+    if args.command == "evening":
+        return cmd_evening(cfg)
     if args.command == "ingest":
         return cmd_ingest(cfg, args)
     if args.command == "features":

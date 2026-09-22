@@ -1,0 +1,8 @@
+# Independent experimental index model; not the frozen daily equity model.
+history_period: 5y
+minimum_samples: 500
+validation_splits: 5
+validation_sessions: 60
+logistic_c: 0.1
+ridge_alpha: 100.0
+ready_hour_ist: 18

@@ -120,6 +120,71 @@ free-tier data" is a stronger claim than silence.
 
 ---
 
+## Intraday index data
+
+Fetch recent completed candles for **NIFTY 50**, **BANK NIFTY**, and **SENSEX**:
+
+```powershell
+python main.py intraday --interval 5m
+```
+
+Supported intervals are `1m`, `5m` (default), and `15m`. Each fetch requests
+five recent days and merges them into separate files in `data/intraday/`,
+preserving previously collected history. Run again to update; this command
+does not start a continuous feed.
+
+In the dashboard, select **Intraday indices**, choose an index and interval,
+then click **Fetch latest candles**. View a trading day's OHLC data and close
+chart, check the latest candle/fetch timestamps in IST, or download saved CSVs.
+Incomplete candles are excluded. Failed downloads preserve saved data.
+
+These are spot index levels (`^NSEI`, `^NSEBANK`, `^BSESN`), not tradable
+futures/options contracts. Yahoo data may be delayed or unavailable and has
+limited intraday history; it is for prototyping, not an execution-grade live
+feed. Index volume may be unavailable. See the
+[yfinance data documentation](https://ranaroussi.github.io/yfinance/reference/yfinance.functions.html).
+
+This collection is separate from the daily stock models and frozen holdout.
+It does not generate intraday BUY/SELL predictions or place trades.
+
+## Evening forecast for the next trading session
+
+After **18:00 IST**, run:
+
+```powershell
+python main.py evening
+```
+
+Or select **Tomorrow's forecast** in the dashboard and click **Generate evening
+forecasts**. Each index gets an experimental direction probability and expected
+**next-session open-to-close return**. This does not predict the opening gap,
+high/low levels, or entries/exits. The forecast is based on five years of daily
+index OHLC, not on the small intraday candle archive.
+
+The independent logistic/ridge models use past-only features and five expanding
+validation folds with a one-session gap. The page reports direction accuracy and
+return error against training-only constant baselines. Probabilities are not
+calibrated; estimates are not trading signals or proven profitable predictions.
+Settings are in `config/evening_forecast.yaml`, separate from the frozen daily
+equity model and its holdout. The new model has no completed prospective test.
+
+Fresh daily bars through the latest exchange session are required. Forecasts,
+source snapshots and hashes are saved in `data/intraday/evening_forecasts/`.
+Existing forecasts for a target session are reused, not overwritten. Generation
+is manual; no evening scheduler is installed. A successful fetch does not
+guarantee the provider's closing data will never be revised.
+
+The **Tomorrow's forecast** page also contains **Daily forecast vs actual**:
+one row per index and target session, predicted/actual direction and return,
+return error, and Correct/Wrong/Pending totals with counts by day. Click
+**Update actual results** after 18:00 IST. Generating evening forecasts in the
+page or running `python main.py evening` also checks past outcomes.
+
+Accuracy is correct / (correct + wrong), based on direction only. Pending,
+flat, and retrospectively issued forecasts are excluded. Actual prices and
+resolution timestamps are saved separately under `evening_forecasts/outcomes/`;
+issued forecasts are never changed. Unavailable final bars remain pending.
+
 ## Testing
 
 ```bash
